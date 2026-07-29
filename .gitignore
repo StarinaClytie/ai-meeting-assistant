@@ -1,0 +1,15 @@
+.env
+.env.local
+.env.production
+data/*.json
+data/*.tmp
+!data/.gitkeep
+uploads/*
+!uploads/.gitkeep
+node_modules/
+.DS_Store
+npm-debug.log*
+*.pem
+*.key
+__pycache__/
+*.py[cod]

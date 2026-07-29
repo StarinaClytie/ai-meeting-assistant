@@ -1,0 +1,17 @@
+{
+  "name": "funasr-meeting-assistant",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "check": "node --check server.js && node --check aliyun-transcription.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "ali-oss": "^6.23.0"
+  }
+}

@@ -1,0 +1,21 @@
+[Unit]
+Description=AI Meeting Assistant
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=meeting-assistant
+Group=meeting-assistant
+WorkingDirectory=/opt/meeting-assistant
+EnvironmentFile=/opt/meeting-assistant/.env
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=5173
+ExecStart=/usr/bin/node /opt/meeting-assistant/server.js
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
