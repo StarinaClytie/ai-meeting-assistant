@@ -1,6 +1,13 @@
 const state = {
   meetings: [],
   selectedMeetingId: null,
+  locale: localStorage.getItem("meetingAssistant:locale") || "zh-CN",
+  meetingFilters: {
+    title: "",
+    speaker: "",
+    from: "",
+    to: ""
+  },
   mediaRecorder: null,
   recordedChunks: [],
   recordingStartedAt: null,
@@ -10,6 +17,216 @@ const state = {
   hotwords: [],
   summaryOptionsMeetingId: null,
   summaryEditingMeetingId: null
+};
+
+const SPEAKER_HISTORY_KEY = "meetingAssistant:speakerProfiles:v1";
+const SPEAKER_ROLES = ["advisor", "student", "member"];
+
+const translations = {
+  "zh-CN": {
+    appTitle: "组会录音到结构化纪要",
+    localFlow: "本地流程",
+    uploadTitle: "录音或上传",
+    uploadDescription: "上传一段会议音频，创建待转写会议。",
+    collapse: "收起",
+    expand: "展开",
+    meetingTitleLabel: "会议标题",
+    meetingTitlePlaceholder: "例如：7月课题组周会",
+    audioFileLabel: "音频文件",
+    localPathLabel: "本机音频路径（大文件推荐）",
+    hotwordsLabel: "本次会议热词",
+    addHotwords: "添加本次会议热词",
+    addVocabularyRow: "+ 添加",
+    clear: "清空",
+    saveHotwords: "保存热词",
+    vocabularyDialogCount: "{count}/200 · 仅用于当前会议",
+    vocabularyColumn: "词汇",
+    typeColumn: "类型",
+    vocabularyPlaceholder: "输入专业词、人名或缩写",
+    typeTerm: "术语",
+    typeName: "人名",
+    typeAcronym: "缩写",
+    typeEntity: "机构设备",
+    localPathHint: "超过 100MB 的音频建议填本机路径创建会议，避免浏览器上传卡住。",
+    createMeeting: "创建会议",
+    refreshList: "刷新列表",
+    transcriptTitle: "转写与说话人标注",
+    transcriptDescription: "FunASR 输出 speaker 编号后，在这里绑定真实姓名并校正文案。",
+    startTranscription: "开始转写",
+    saveLabels: "保存标注",
+    summaryTitle: "生成会议总结",
+    summaryDescription: "选择内容类型后生成核心结论、智能章节、明确待办、决策和金句。",
+    summaryTemplateLabel: "总结模板",
+    templateAuto: "自动识别",
+    templateTeaching: "课程 / 作业讲解",
+    templateResearch: "科研组会",
+    templateProject: "项目会议",
+    templateGeneral: "通用讨论",
+    templateCustom: "自定义要求",
+    customPromptLabel: "本次总结要求",
+    customPromptPlaceholder: "例如：重点整理实验参数、失败原因和下周需要验证的假设",
+    generateSummary: "生成总结",
+    exportWord: "导出 Word",
+    exportPdf: "导出 PDF",
+    editMinutes: "编辑纪要",
+    saveChanges: "保存修改",
+    cancelEdit: "取消编辑",
+    meetingQueue: "会议队列",
+    runtimeStatus: "运行状态",
+    searchTitle: "标题搜索",
+    searchTitlePlaceholder: "输入会议标题",
+    speakerFilter: "说话人",
+    dateFrom: "开始日期",
+    dateTo: "结束日期",
+    clearFilters: "清除筛选",
+    allSpeakers: "全部说话人",
+    filterCount: "显示 {shown}/{total} 场",
+    noMeetings: "还没有会议",
+    noMatches: "没有符合筛选条件的会议",
+    noMeetingOption: "暂无会议",
+    advisor: "导师",
+    student: "学生",
+    member: "实验室成员",
+    realName: "真实姓名",
+    noSpeakerHistory: "此分类暂无历史姓名，可直接输入新姓名",
+    transcriptPlaceholder: "创建会议后显示转录片段",
+    noTranscript: "还没有转录内容",
+    summaryPlaceholder: "摘要会显示在这里",
+    smartMinutes: "智能纪要",
+    contentOverview: "内容概览",
+    noOverview: "暂无概览",
+    coreTakeaways: "核心结论",
+    noCoreTakeaways: "没有提取到明确的核心结论",
+    smartChapters: "智能章节",
+    noChapters: "没有生成智能章节",
+    actionItems: "待办事项",
+    noActionItems: "本次没有明确的后续待办",
+    keyDecisions: "关键决策",
+    noDecisions: "本次没有明确达成的会议决策",
+    highlights: "金句时刻",
+    noHighlights: "本次没有适合单独摘录的金句",
+    keyPoints: "要点",
+    formulas: "公式与结果",
+    misconceptions: "易错点",
+    unnamedChapter: "未命名章节",
+    unlabeled: "未标注",
+    unspecified: "未指定",
+    unknown: "未知",
+    statusUploaded: "已上传",
+    statusTranscribing: "转写中",
+    statusTranscribed: "待总结",
+    statusSummarizing: "总结中",
+    statusSummarized: "已完成",
+    statusFailed: "处理失败",
+    hotwordCountEmpty: "0 个热词",
+    hotwordCount: "{count} 个热词已添加",
+    readyLog: "准备就绪，可以录音或上传音频。",
+    labelsSavedLog: "说话人和转录文本已保存。",
+    requestFailed: "请求失败",
+    namePlaceholder: "姓名"
+  },
+  en: {
+    appTitle: "Meeting audio to structured minutes",
+    localFlow: "Local workflow",
+    uploadTitle: "Record or upload",
+    uploadDescription: "Upload meeting audio to create a transcription task.",
+    collapse: "Collapse",
+    expand: "Expand",
+    meetingTitleLabel: "Meeting title",
+    meetingTitlePlaceholder: "e.g. July research group meeting",
+    audioFileLabel: "Audio file",
+    localPathLabel: "Local audio path (large files)",
+    hotwordsLabel: "Meeting vocabulary",
+    addHotwords: "Add meeting vocabulary",
+    addVocabularyRow: "+ Add",
+    clear: "Clear",
+    saveHotwords: "Save vocabulary",
+    vocabularyDialogCount: "{count}/200 · Current meeting only",
+    vocabularyColumn: "Vocabulary",
+    typeColumn: "Type",
+    vocabularyPlaceholder: "Enter a technical term, name or acronym",
+    typeTerm: "Term",
+    typeName: "Name",
+    typeAcronym: "Acronym",
+    typeEntity: "Organization / equipment",
+    localPathHint: "For audio over 100 MB, use a local path to avoid a stalled browser upload.",
+    createMeeting: "Create meeting",
+    refreshList: "Refresh",
+    transcriptTitle: "Transcript and speaker labels",
+    transcriptDescription: "Map speaker IDs to real names and correct the transcript.",
+    startTranscription: "Transcribe",
+    saveLabels: "Save labels",
+    summaryTitle: "Generate meeting minutes",
+    summaryDescription: "Generate takeaways, chapters, action items, decisions and highlights.",
+    summaryTemplateLabel: "Summary template",
+    templateAuto: "Auto detect",
+    templateTeaching: "Teaching / assignment",
+    templateResearch: "Research meeting",
+    templateProject: "Project meeting",
+    templateGeneral: "General discussion",
+    templateCustom: "Custom instructions",
+    customPromptLabel: "Summary instructions",
+    customPromptPlaceholder: "e.g. Focus on experiment parameters, failure causes and hypotheses to test next week",
+    generateSummary: "Generate summary",
+    exportWord: "Export Word",
+    exportPdf: "Export PDF",
+    editMinutes: "Edit minutes",
+    saveChanges: "Save changes",
+    cancelEdit: "Cancel",
+    meetingQueue: "Meeting history",
+    runtimeStatus: "Activity",
+    searchTitle: "Search title",
+    searchTitlePlaceholder: "Enter a meeting title",
+    speakerFilter: "Speaker",
+    dateFrom: "From",
+    dateTo: "To",
+    clearFilters: "Clear filters",
+    allSpeakers: "All speakers",
+    filterCount: "Showing {shown} of {total}",
+    noMeetings: "No meetings yet",
+    noMatches: "No meetings match these filters",
+    noMeetingOption: "No meetings",
+    advisor: "Advisor",
+    student: "Student",
+    member: "Lab member",
+    realName: "Real name",
+    noSpeakerHistory: "No saved names in this category. Enter a new name.",
+    transcriptPlaceholder: "Transcript segments appear after creating a meeting",
+    noTranscript: "No transcript yet",
+    summaryPlaceholder: "The summary will appear here",
+    smartMinutes: "AI minutes",
+    contentOverview: "Overview",
+    noOverview: "No overview",
+    coreTakeaways: "Core takeaways",
+    noCoreTakeaways: "No explicit core takeaways were identified",
+    smartChapters: "Smart chapters",
+    noChapters: "No smart chapters were generated",
+    actionItems: "Action items",
+    noActionItems: "No explicit follow-up actions",
+    keyDecisions: "Key decisions",
+    noDecisions: "No explicit decisions were made",
+    highlights: "Highlights",
+    noHighlights: "No standalone highlight was identified",
+    keyPoints: "Key points",
+    formulas: "Formulas and results",
+    misconceptions: "Misconceptions",
+    unnamedChapter: "Untitled chapter",
+    unlabeled: "Unlabeled",
+    unspecified: "Unspecified",
+    unknown: "Unknown",
+    statusUploaded: "Uploaded",
+    statusTranscribing: "Transcribing",
+    statusTranscribed: "Ready to summarize",
+    statusSummarizing: "Summarizing",
+    statusSummarized: "Completed",
+    statusFailed: "Failed",
+    hotwordCountEmpty: "0 terms",
+    hotwordCount: "{count} terms added",
+    readyLog: "Ready to record or upload audio.",
+    labelsSavedLog: "Speaker labels and transcript changes saved.",
+    requestFailed: "Request failed",
+    namePlaceholder: "Name"
+  }
 };
 
 const els = {
@@ -52,11 +269,18 @@ const els = {
   speakerMap: document.querySelector("#speakerMap"),
   segments: document.querySelector("#segments"),
   summary: document.querySelector("#summary"),
+  meetingSearch: document.querySelector("#meetingSearch"),
+  meetingSpeakerFilter: document.querySelector("#meetingSpeakerFilter"),
+  meetingDateFrom: document.querySelector("#meetingDateFrom"),
+  meetingDateTo: document.querySelector("#meetingDateTo"),
+  meetingFilterCount: document.querySelector("#meetingFilterCount"),
+  clearMeetingFilters: document.querySelector("#clearMeetingFilters"),
   meetingList: document.querySelector("#meetingList"),
   log: document.querySelector("#log"),
   systemStatus: document.querySelector("#systemStatus"),
   segmentTemplate: document.querySelector("#segmentTemplate"),
-  panelToggles: document.querySelectorAll("[data-toggle-panel]")
+  panelToggles: document.querySelectorAll("[data-toggle-panel]"),
+  languageButtons: document.querySelectorAll("[data-language]")
 };
 
 els.recordButton.addEventListener("click", toggleRecording);
@@ -78,16 +302,58 @@ els.exportPdfButton.addEventListener("click", exportSummaryPdf);
 els.editSummaryButton.addEventListener("click", startSummaryEditing);
 els.saveSummaryButton.addEventListener("click", saveSummaryEditing);
 els.cancelSummaryButton.addEventListener("click", cancelSummaryEditing);
+els.meetingSearch.addEventListener("input", updateMeetingFilters);
+els.meetingSpeakerFilter.addEventListener("change", updateMeetingFilters);
+els.meetingDateFrom.addEventListener("change", updateMeetingFilters);
+els.meetingDateTo.addEventListener("change", updateMeetingFilters);
+els.clearMeetingFilters.addEventListener("click", clearMeetingFilters);
+els.languageButtons.forEach((button) => {
+  button.addEventListener("click", () => setLocale(button.dataset.language));
+});
 els.panelToggles.forEach((button) => {
   button.addEventListener("click", () => togglePanel(button.dataset.togglePanel));
 });
 els.summary.addEventListener("click", handleSummaryClick);
 
+applyLocale();
 restorePanelState();
 configureEnvironmentSpecificUi();
 await loadMeetings();
 updateVocabularyCount();
-log("准备就绪，可以录音或上传音频。");
+log(t("readyLog"));
+
+function t(key, variables = {}) {
+  const dictionary = translations[state.locale] || translations["zh-CN"];
+  const template = dictionary[key] ?? translations["zh-CN"][key] ?? key;
+  return Object.entries(variables).reduce(
+    (text, [name, value]) => text.replaceAll(`{${name}}`, String(value)),
+    template
+  );
+}
+
+function applyLocale() {
+  document.documentElement.lang = state.locale;
+  document.title = state.locale === "en" ? "FunASR Meeting Assistant" : "FunASR 会议总结助手";
+  document.querySelectorAll("[data-i18n]").forEach((node) => {
+    node.textContent = t(node.dataset.i18n);
+  });
+  document.querySelectorAll("[data-i18n-placeholder]").forEach((node) => {
+    node.placeholder = t(node.dataset.i18nPlaceholder);
+  });
+  els.languageButtons.forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.language === state.locale));
+  });
+}
+
+function setLocale(locale) {
+  if (!translations[locale] || locale === state.locale) return;
+  state.locale = locale;
+  localStorage.setItem("meetingAssistant:locale", locale);
+  applyLocale();
+  restorePanelState();
+  renderAll();
+  updateVocabularyCount();
+}
 
 function configureEnvironmentSpecificUi() {
   const isLocal = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
@@ -236,6 +502,7 @@ function startPollingMeeting(meetingId) {
 async function saveSegments() {
   const meeting = selectedMeeting();
   if (!meeting) return;
+  const speakerProfiles = readSpeakerProfilesFromEditor();
   const segments = [...document.querySelectorAll(".segment-row")].map((row) => ({
     id: row.dataset.id,
     speaker_label: row.dataset.speakerLabel,
@@ -253,8 +520,9 @@ async function saveSegments() {
       body: JSON.stringify({ segments })
     });
     replaceMeeting(response.meeting);
+    saveSpeakerProfiles(speakerProfiles);
     renderAll();
-    log("说话人和转录文本已保存。");
+    log(t("labelsSavedLog"));
   } catch (error) {
     log(error.message);
   } finally {
@@ -272,7 +540,8 @@ async function summarizeSelected() {
       method: "POST",
       body: JSON.stringify({
         template: els.summaryTemplate.value,
-        customPrompt: els.customSummaryPrompt.value.trim()
+        customPrompt: els.customSummaryPrompt.value.trim(),
+        language: state.locale
       })
     });
     replaceMeeting(response.meeting);
@@ -309,12 +578,12 @@ function addVocabularyRow(value = "", type = "term") {
   const row = document.createElement("div");
   row.className = "vocabulary-row";
   row.innerHTML = `
-    <input class="vocabulary-input" type="text" value="${escapeHtml(value)}" placeholder="输入专业词、人名或缩写">
+    <input class="vocabulary-input" type="text" value="${escapeHtml(value)}" placeholder="${escapeHtml(t("vocabularyPlaceholder"))}">
     <select class="vocabulary-type" aria-label="热词类型">
-      <option value="term">术语</option>
-      <option value="name">人名</option>
-      <option value="acronym">缩写</option>
-      <option value="entity">机构设备</option>
+      <option value="term">${t("typeTerm")}</option>
+      <option value="name">${t("typeName")}</option>
+      <option value="acronym">${t("typeAcronym")}</option>
+      <option value="entity">${t("typeEntity")}</option>
     </select>
     <button class="icon-delete" type="button" aria-label="删除热词">×</button>
   `;
@@ -362,12 +631,12 @@ function readVocabularyRows() {
 
 function updateVocabularyCount() {
   const count = state.hotwords.length;
-  els.vocabularyCount.textContent = count ? `${count} 个热词已添加` : "0 个热词";
+  els.vocabularyCount.textContent = count ? t("hotwordCount", { count }) : t("hotwordCountEmpty");
 }
 
 function updateVocabularyDialogCount() {
   const count = readVocabularyRows().length;
-  els.vocabularyDialogCount.textContent = `${count}/200 · 仅用于当前会议`;
+  els.vocabularyDialogCount.textContent = t("vocabularyDialogCount", { count });
 }
 
 function exportSummaryDoc() {
@@ -417,7 +686,7 @@ function renderAll() {
   renderSummaryControls();
   renderSummary();
   const meeting = selectedMeeting();
-  els.systemStatus.textContent = meeting ? statusText(meeting.status) : "本地流程";
+  els.systemStatus.textContent = meeting ? statusText(meeting.status) : t("localFlow");
 }
 
 function renderSummaryControls() {
@@ -450,7 +719,7 @@ function renderMeetings() {
   els.meetingSelect.innerHTML = "";
   if (!state.meetings.length) {
     const option = document.createElement("option");
-    option.textContent = "暂无会议";
+    option.textContent = t("noMeetingOption");
     option.value = "";
     els.meetingSelect.append(option);
   }
@@ -462,12 +731,23 @@ function renderMeetings() {
     els.meetingSelect.append(option);
   }
 
+  renderMeetingSpeakerFilter();
+  const filteredMeetings = filterMeetings();
   els.meetingList.innerHTML = "";
   if (!state.meetings.length) {
-    els.meetingList.innerHTML = `<div class="empty-state">还没有会议</div>`;
+    els.meetingFilterCount.textContent = "";
+    els.meetingList.innerHTML = `<div class="empty-state">${t("noMeetings")}</div>`;
     return;
   }
-  for (const meeting of state.meetings) {
+  els.meetingFilterCount.textContent = t("filterCount", {
+    shown: filteredMeetings.length,
+    total: state.meetings.length
+  });
+  if (!filteredMeetings.length) {
+    els.meetingList.innerHTML = `<div class="empty-state">${t("noMatches")}</div>`;
+    return;
+  }
+  for (const meeting of filteredMeetings) {
     const item = document.createElement("button");
     item.type = "button";
     item.className = `meeting-item ${meeting.id === state.selectedMeetingId ? "active" : ""}`;
@@ -477,26 +757,111 @@ function renderMeetings() {
   }
 }
 
+function updateMeetingFilters() {
+  state.meetingFilters = {
+    title: els.meetingSearch.value.trim(),
+    speaker: els.meetingSpeakerFilter.value,
+    from: els.meetingDateFrom.value,
+    to: els.meetingDateTo.value
+  };
+  renderMeetings();
+}
+
+function clearMeetingFilters() {
+  state.meetingFilters = { title: "", speaker: "", from: "", to: "" };
+  els.meetingSearch.value = "";
+  els.meetingDateFrom.value = "";
+  els.meetingDateTo.value = "";
+  els.meetingSpeakerFilter.value = "";
+  renderMeetings();
+}
+
+function renderMeetingSpeakerFilter() {
+  const selectedValue = state.meetingFilters.speaker;
+  const names = [...new Set(state.meetings.flatMap((meeting) =>
+    (meeting.transcripts || []).map((segment) => String(segment.speaker_name || "").trim()).filter(Boolean)
+  ))].sort((a, b) => a.localeCompare(b, state.locale));
+  els.meetingSpeakerFilter.innerHTML = "";
+  const allOption = document.createElement("option");
+  allOption.value = "";
+  allOption.textContent = t("allSpeakers");
+  els.meetingSpeakerFilter.append(allOption);
+  for (const name of names) {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    els.meetingSpeakerFilter.append(option);
+  }
+  els.meetingSpeakerFilter.value = names.includes(selectedValue) ? selectedValue : "";
+  state.meetingFilters.speaker = els.meetingSpeakerFilter.value;
+}
+
+function filterMeetings() {
+  const titleQuery = state.meetingFilters.title.toLocaleLowerCase(state.locale);
+  const fromTime = state.meetingFilters.from
+    ? new Date(`${state.meetingFilters.from}T00:00:00`).getTime()
+    : Number.NEGATIVE_INFINITY;
+  const toTime = state.meetingFilters.to
+    ? new Date(`${state.meetingFilters.to}T23:59:59.999`).getTime()
+    : Number.POSITIVE_INFINITY;
+  return state.meetings.filter((meeting) => {
+    const createdAt = new Date(meeting.created_at).getTime();
+    const titleMatches = !titleQuery
+      || String(meeting.title || "").toLocaleLowerCase(state.locale).includes(titleQuery);
+    const speakerMatches = !state.meetingFilters.speaker
+      || (meeting.transcripts || []).some((segment) => segment.speaker_name === state.meetingFilters.speaker);
+    return titleMatches && speakerMatches && createdAt >= fromTime && createdAt <= toTime;
+  });
+}
+
 function renderEditor() {
   const meeting = selectedMeeting();
   els.speakerMap.innerHTML = "";
   els.segments.innerHTML = "";
   if (!meeting) {
-    els.segments.innerHTML = `<div class="empty-state">创建会议后显示转录片段</div>`;
+    els.segments.innerHTML = `<div class="empty-state">${t("transcriptPlaceholder")}</div>`;
     return;
   }
   if (!meeting.transcripts.length) {
-    els.segments.innerHTML = `<div class="empty-state">还没有转录内容</div>`;
+    els.segments.innerHTML = `<div class="empty-state">${t("noTranscript")}</div>`;
     return;
   }
 
   const labels = [...new Set(meeting.transcripts.map((segment) => segment.speaker_label))];
   for (const label of labels) {
-    const card = document.createElement("label");
+    const card = document.createElement("article");
     card.className = "speaker-card";
     const currentName = meeting.transcripts.find((segment) => segment.speaker_label === label)?.speaker_name || "";
-    card.innerHTML = `<strong>${escapeHtml(label)}</strong><input data-map-label="${escapeHtml(label)}" value="${escapeHtml(currentName)}" placeholder="真实姓名">`;
-    card.querySelector("input").addEventListener("input", (event) => applySpeakerName(label, event.target.value));
+    const currentProfile = speakerProfiles().find((profile) => profile.name === currentName);
+    const currentRole = currentProfile?.role || "member";
+    card.dataset.speakerLabel = label;
+    card.dataset.speakerRole = currentRole;
+    card.innerHTML = `
+      <strong>${escapeHtml(label)}</strong>
+      <div class="speaker-role-tabs" role="group" aria-label="${escapeHtml(t("speakerFilter"))}">
+        ${SPEAKER_ROLES.map((role) => `
+          <button type="button" data-speaker-role="${role}" aria-pressed="${String(role === currentRole)}">${escapeHtml(t(role))}</button>
+        `).join("")}
+      </div>
+      <div class="speaker-name-picker">
+        <input class="speaker-map-input" data-map-label="${escapeHtml(label)}" value="${escapeHtml(currentName)}" placeholder="${escapeHtml(t("realName"))}">
+        <div class="speaker-suggestions"></div>
+      </div>
+    `;
+    card.querySelectorAll("[data-speaker-role]").forEach((button) => {
+      button.addEventListener("click", () => {
+        card.dataset.speakerRole = button.dataset.speakerRole;
+        card.querySelectorAll("[data-speaker-role]").forEach((item) => {
+          item.setAttribute("aria-pressed", String(item === button));
+        });
+        renderSpeakerSuggestions(card);
+      });
+    });
+    card.querySelector(".speaker-map-input").addEventListener("input", (event) => {
+      applySpeakerName(label, event.target.value);
+      renderSpeakerSuggestions(card);
+    });
+    renderSpeakerSuggestions(card);
     els.speakerMap.append(card);
   }
 
@@ -509,9 +874,101 @@ function renderEditor() {
     node.dataset.sortOrder = segment.sort_order;
     node.querySelector(".time").textContent = `${formatTime(segment.start_time)}-${formatTime(segment.end_time)}`;
     node.querySelector(".speaker-input").value = segment.speaker_name;
+    node.querySelector(".speaker-input").placeholder = t("namePlaceholder");
     node.querySelector(".text-input").value = segment.text;
     els.segments.append(node);
   }
+}
+
+function speakerProfiles() {
+  let savedProfiles = [];
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SPEAKER_HISTORY_KEY) || "[]");
+    savedProfiles = Array.isArray(parsed) ? parsed : [];
+  } catch {
+    savedProfiles = [];
+  }
+  const normalized = savedProfiles
+    .map((profile) => ({
+      name: String(profile.name || "").trim(),
+      role: SPEAKER_ROLES.includes(profile.role) ? profile.role : "member",
+      usageCount: Math.max(0, Number(profile.usageCount || 0)),
+      lastUsedAt: String(profile.lastUsedAt || "")
+    }))
+    .filter((profile) => profile.name);
+  const knownNames = new Set(normalized.map((profile) => profile.name.toLocaleLowerCase()));
+  for (const meeting of state.meetings) {
+    for (const segment of meeting.transcripts || []) {
+      const name = String(segment.speaker_name || "").trim();
+      const key = name.toLocaleLowerCase();
+      if (!name || knownNames.has(key)) continue;
+      normalized.push({ name, role: "member", usageCount: 0, lastUsedAt: meeting.updated_at || meeting.created_at || "" });
+      knownNames.add(key);
+    }
+  }
+  return normalized.sort((a, b) =>
+    Number(b.usageCount) - Number(a.usageCount)
+    || String(b.lastUsedAt).localeCompare(String(a.lastUsedAt))
+    || a.name.localeCompare(b.name, state.locale)
+  );
+}
+
+function renderSpeakerSuggestions(card) {
+  const container = card.querySelector(".speaker-suggestions");
+  const input = card.querySelector(".speaker-map-input");
+  const query = input.value.trim().toLocaleLowerCase(state.locale);
+  const profiles = speakerProfiles()
+    .filter((profile) => profile.role === card.dataset.speakerRole)
+    .filter((profile) => !query || profile.name.toLocaleLowerCase(state.locale).includes(query))
+    .slice(0, 12);
+  container.innerHTML = "";
+  if (!profiles.length) {
+    container.innerHTML = `<p class="speaker-history-empty">${t("noSpeakerHistory")}</p>`;
+    return;
+  }
+  for (const profile of profiles) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "speaker-suggestion";
+    button.textContent = profile.name;
+    button.addEventListener("click", () => {
+      input.value = profile.name;
+      applySpeakerName(card.dataset.speakerLabel, profile.name);
+      renderSpeakerSuggestions(card);
+    });
+    container.append(button);
+  }
+}
+
+function readSpeakerProfilesFromEditor() {
+  return [...els.speakerMap.querySelectorAll(".speaker-card")]
+    .map((card) => ({
+      name: card.querySelector(".speaker-map-input")?.value.trim() || "",
+      role: SPEAKER_ROLES.includes(card.dataset.speakerRole) ? card.dataset.speakerRole : "member"
+    }))
+    .filter((profile) => profile.name);
+}
+
+function saveSpeakerProfiles(profiles) {
+  const existing = speakerProfiles();
+  const now = new Date().toISOString();
+  for (const profile of profiles) {
+    const match = existing.find((item) => item.name.toLocaleLowerCase() === profile.name.toLocaleLowerCase());
+    if (match) {
+      match.name = profile.name;
+      match.role = profile.role;
+      match.usageCount = Number(match.usageCount || 0) + 1;
+      match.lastUsedAt = now;
+    } else {
+      existing.push({
+        name: profile.name,
+        role: profile.role,
+        usageCount: 1,
+        lastUsedAt: now
+      });
+    }
+  }
+  localStorage.setItem(SPEAKER_HISTORY_KEY, JSON.stringify(existing));
 }
 
 function renderSummary() {
@@ -519,7 +976,7 @@ function renderSummary() {
   els.summary.innerHTML = "";
   renderSummaryEditControls(meeting);
   if (!meeting?.summary) {
-    els.summary.innerHTML = `<div class="empty-state">摘要会显示在这里</div>`;
+    els.summary.innerHTML = `<div class="empty-state">${t("summaryPlaceholder")}</div>`;
     return;
   }
 
@@ -529,10 +986,10 @@ function renderSummary() {
     return;
   }
 
-  els.summary.append(summaryBlock("整体摘要", `<p>${escapeHtml(summary.summary)}</p>`));
-  els.summary.append(summaryBlock("关键要点", listHtml(summary.key_points)));
-  els.summary.append(summaryBlock("待办事项", actionItemsHtml(summary.action_items)));
-  els.summary.append(summaryBlock("会议决策", listHtml(summary.decisions)));
+  els.summary.append(summaryBlock(t("contentOverview"), `<p>${escapeHtml(summary.summary)}</p>`));
+  els.summary.append(summaryBlock(t("keyPoints"), listHtml(summary.key_points)));
+  els.summary.append(summaryBlock(t("actionItems"), actionItemsHtml(summary.action_items)));
+  els.summary.append(summaryBlock(t("keyDecisions"), listHtml(summary.decisions)));
 }
 
 function renderSummaryEditControls(meeting) {
@@ -610,40 +1067,40 @@ function renderModernSummary(summary) {
   header.className = "summary-document-head";
   header.innerHTML = `
     <div>
-      <span class="summary-kicker">智能纪要</span>
-      ${editableTextHtml("h2", summary.title || "会议内容总结", "title")}
+      <span class="summary-kicker">${t("smartMinutes")}</span>
+      ${editableTextHtml("h2", summary.title || t("summaryTitle"), "title")}
     </div>
     <span class="summary-type">${escapeHtml(meetingTypeLabel(summary.meeting_type, summary.template))}</span>
   `;
   els.summary.append(header);
 
-  els.summary.append(summarySection("内容概览", editableTextHtml("p", summary.summary || "暂无概览", "summary", "summary-lead")));
+  els.summary.append(summarySection(t("contentOverview"), editableTextHtml("p", summary.summary || t("noOverview"), "summary", "summary-lead")));
 
   const takeaways = Array.isArray(summary.core_takeaways) ? summary.core_takeaways : [];
   const takeawayHtml = takeaways.length
     ? `<div class="takeaway-list">${takeaways.map((item, index) => `
         <article class="takeaway-item">
-          ${editableTextHtml("h4", item.title || "核心结论", `core_takeaways.${index}.title`)}
+          ${editableTextHtml("h4", item.title || t("coreTakeaways"), `core_takeaways.${index}.title`)}
           ${editableTextHtml("p", item.detail || "", `core_takeaways.${index}.detail`)}
           ${evidenceHtml(item.evidence)}
         </article>
       `).join("")}</div>`
-    : `<p class="summary-empty">没有提取到明确的核心结论</p>`;
-  els.summary.append(summarySection("核心结论", takeawayHtml));
+    : `<p class="summary-empty">${t("noCoreTakeaways")}</p>`;
+  els.summary.append(summarySection(t("coreTakeaways"), takeawayHtml));
 
   const chapters = Array.isArray(summary.chapters) ? summary.chapters : [];
   const chapterHtml = chapters.length
     ? `<div class="chapter-list">${chapters.map((chapter, index) => chapterHtmlForSummary(chapter, index)).join("")}</div>`
-    : `<p class="summary-empty">没有生成智能章节</p>`;
-  els.summary.append(summarySection("智能章节", chapterHtml));
+    : `<p class="summary-empty">${t("noChapters")}</p>`;
+  els.summary.append(summarySection(t("smartChapters"), chapterHtml));
 
   els.summary.append(summarySection(
-    "待办事项",
-    actionItemsHtml(summary.action_items, "本次没有明确的后续待办", "action_items")
+    t("actionItems"),
+    actionItemsHtml(summary.action_items, t("noActionItems"), "action_items")
   ));
   els.summary.append(summarySection(
-    "关键决策",
-    decisionsHtml(summary.decisions, "本次没有明确达成的会议决策", "decisions")
+    t("keyDecisions"),
+    decisionsHtml(summary.decisions, t("noDecisions"), "decisions")
   ));
 
   const highlights = Array.isArray(summary.highlights) ? summary.highlights : [];
@@ -652,14 +1109,14 @@ function renderModernSummary(summary) {
         <figure class="highlight-item">
           <blockquote>“${editableTextHtml("span", item.quote || "", `highlights.${index}.quote`)}”</blockquote>
           <figcaption>
-            ${editableTextHtml("span", item.speaker || "未标注", `highlights.${index}.speaker`)}
+            ${editableTextHtml("span", item.speaker || t("unlabeled"), `highlights.${index}.speaker`)}
             ${timestampButton(item.timestamp)}
             ${item.significance ? editableTextHtml("span", item.significance, `highlights.${index}.significance`) : ""}
           </figcaption>
         </figure>
       `).join("")}</div>`
-    : `<p class="summary-empty">本次没有适合单独摘录的金句</p>`;
-  els.summary.append(summarySection("金句时刻", highlightsHtml));
+    : `<p class="summary-empty">${t("noHighlights")}</p>`;
+  els.summary.append(summarySection(t("highlights"), highlightsHtml));
 }
 
 function summarySection(title, html) {
@@ -675,12 +1132,12 @@ function chapterHtmlForSummary(chapter, chapterIndex) {
     <article class="chapter-item">
       <div class="chapter-heading">
         ${timestampButton(chapter.start_time)}
-        ${editableTextHtml("h4", chapter.title || "未命名章节", `chapters.${chapterIndex}.title`)}
+        ${editableTextHtml("h4", chapter.title || t("unnamedChapter"), `chapters.${chapterIndex}.title`)}
       </div>
       ${editableTextHtml("p", chapter.summary || "", `chapters.${chapterIndex}.summary`)}
-      ${detailListHtml("要点", chapter.key_points, `chapters.${chapterIndex}.key_points`)}
-      ${detailListHtml("公式与结果", chapter.formulas, `chapters.${chapterIndex}.formulas`)}
-      ${detailListHtml("易错点", chapter.misconceptions, `chapters.${chapterIndex}.misconceptions`)}
+      ${detailListHtml(t("keyPoints"), chapter.key_points, `chapters.${chapterIndex}.key_points`)}
+      ${detailListHtml(t("formulas"), chapter.formulas, `chapters.${chapterIndex}.formulas`)}
+      ${detailListHtml(t("misconceptions"), chapter.misconceptions, `chapters.${chapterIndex}.misconceptions`)}
     </article>
   `;
 }
@@ -757,22 +1214,22 @@ function parseTimestamp(value) {
 
 function templateLabel(template) {
   return {
-    auto: "自动识别",
-    teaching: "课程讲解",
-    research: "科研组会",
-    project: "项目会议",
-    general: "通用讨论",
-    custom: "自定义"
-  }[template] || "结构化总结";
+    auto: t("templateAuto"),
+    teaching: t("templateTeaching"),
+    research: t("templateResearch"),
+    project: t("templateProject"),
+    general: t("templateGeneral"),
+    custom: t("templateCustom")
+  }[template] || t("summaryTitle");
 }
 
 function meetingTypeLabel(meetingType, template) {
   const normalized = String(meetingType || "").toLowerCase();
   return {
-    teaching: "课程讲解",
-    research: "科研组会",
-    project: "项目会议",
-    general: "通用讨论"
+    teaching: t("templateTeaching"),
+    research: t("templateResearch"),
+    project: t("templateProject"),
+    general: t("templateGeneral")
   }[normalized] || meetingType || templateLabel(template);
 }
 
@@ -923,7 +1380,7 @@ function listHtml(items = []) {
 function actionItemsHtml(items = [], emptyText = "暂无", pathPrefix = "") {
   if (!items.length) return `<p class="summary-empty">${escapeHtml(emptyText)}</p>`;
   return `<ul>${items.map((item, index) => {
-    const person = editableTextHtml("strong", item.person || "未指定", `${pathPrefix}.${index}.person`);
+    const person = editableTextHtml("strong", item.person || t("unspecified"), `${pathPrefix}.${index}.person`);
     const task = editableTextHtml("span", item.task || "", `${pathPrefix}.${index}.task`);
     const deadline = item.deadline
       ? `（${editableTextHtml("span", item.deadline, `${pathPrefix}.${index}.deadline`)}）`
@@ -981,7 +1438,7 @@ function setPanelCollapsed(panelName, isCollapsed) {
   const toggle = document.querySelector(`[data-toggle-panel="${panelName}"]`);
   if (!panel || !toggle) return;
   panel.classList.toggle("is-collapsed", isCollapsed);
-  toggle.textContent = isCollapsed ? "展开" : "收起";
+  toggle.textContent = isCollapsed ? t("expand") : t("collapse");
   toggle.setAttribute("aria-expanded", String(!isCollapsed));
   localStorage.setItem(`panel:${panelName}`, isCollapsed ? "collapsed" : "expanded");
 }
@@ -1003,7 +1460,7 @@ function updateTimer() {
 function log(message) {
   const entry = document.createElement("div");
   entry.className = "log-entry";
-  entry.textContent = `${new Date().toLocaleTimeString("zh-CN", { hour12: false })} ${message}`;
+  entry.textContent = `${new Date().toLocaleTimeString(state.locale, { hour12: false })} ${message}`;
   els.log.prepend(entry);
 }
 
@@ -1014,7 +1471,7 @@ async function api(url, options = {}) {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload.error || payload.detail || "请求失败");
+    throw new Error(payload.error || payload.detail || t("requestFailed"));
   }
   return payload;
 }
@@ -1030,13 +1487,13 @@ function blobToDataUrl(blob) {
 
 function statusText(status) {
   return {
-    uploaded: "已上传",
-    transcribing: "转写中",
-    transcribed: "待总结",
-    summarizing: "总结中",
-    summarized: "已完成",
-    failed: "处理失败"
-  }[status] || status || "未知";
+    uploaded: t("statusUploaded"),
+    transcribing: t("statusTranscribing"),
+    transcribed: t("statusTranscribed"),
+    summarizing: t("statusSummarizing"),
+    summarized: t("statusSummarized"),
+    failed: t("statusFailed")
+  }[status] || status || t("unknown");
 }
 
 function formatTime(seconds) {
@@ -1047,7 +1504,7 @@ function formatTime(seconds) {
 }
 
 function formatDate(value) {
-  return new Date(value).toLocaleString("zh-CN", {
+  return new Date(value).toLocaleString(state.locale, {
     month: "2-digit",
     day: "2-digit",
     hour: "2-digit",
@@ -1056,7 +1513,7 @@ function formatDate(value) {
 }
 
 function formatFullDate(value) {
-  return new Date(value).toLocaleString("zh-CN", {
+  return new Date(value).toLocaleString(state.locale, {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",

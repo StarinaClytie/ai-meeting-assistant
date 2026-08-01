@@ -634,6 +634,9 @@ function buildSummaryPrompt(segments, hotwords = [], options = {}) {
     : "";
 
   const templateInstruction = summaryTemplateInstruction(summaryOptions);
+  const languageInstruction = summaryOptions.language === "en"
+    ? "输出语言：英文。JSON 字段名保持 schema 不变，但所有面向用户的标题、摘要、结论、章节、待办、决策和金句说明都必须使用英文。"
+    : "输出语言：简体中文。";
   const customInstruction = summaryOptions.customPrompt
     ? `\n\n用户补充要求：\n${summaryOptions.customPrompt}`
     : "";
@@ -642,6 +645,7 @@ function buildSummaryPrompt(segments, hotwords = [], options = {}) {
 
 总结模式：${summaryOptions.template}
 ${templateInstruction}
+${languageInstruction}
 
 必须遵守：
 1. 所有内容只能来自转录。不要补充常识性答案，不要猜测原文没有的信息。
@@ -725,7 +729,8 @@ function normalizeSummaryOptions(value = {}) {
   const requestedTemplate = String(value.template || "auto").trim().toLowerCase();
   return {
     template: allowedTemplates.has(requestedTemplate) ? requestedTemplate : "auto",
-    customPrompt: String(value.customPrompt || "").trim().slice(0, 3000)
+    customPrompt: String(value.customPrompt || "").trim().slice(0, 3000),
+    language: String(value.language || "").trim().toLowerCase() === "en" ? "en" : "zh-CN"
   };
 }
 

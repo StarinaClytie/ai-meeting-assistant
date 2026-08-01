@@ -12,19 +12,25 @@
         <header class="topbar">
           <div>
             <p class="eyebrow">FunASR Meeting Assistant</p>
-            <h1>组会录音到结构化纪要</h1>
+            <h1 data-i18n="appTitle">组会录音到结构化纪要</h1>
           </div>
-          <div class="status-pill" id="systemStatus">本地流程</div>
+          <div class="topbar-actions">
+            <div class="language-switch" role="group" aria-label="Language">
+              <button type="button" data-language="zh-CN" aria-pressed="true">中文</button>
+              <button type="button" data-language="en" aria-pressed="false">EN</button>
+            </div>
+            <div class="status-pill" id="systemStatus" data-i18n="localFlow">本地流程</div>
+          </div>
         </header>
 
         <section class="panel upload-panel collapsible-panel" data-panel="upload">
           <div class="section-heading">
             <span class="step-index">1</span>
             <div>
-              <h2>录音或上传</h2>
-              <p>上传一段会议音频，创建待转写会议。</p>
+              <h2 data-i18n="uploadTitle">录音或上传</h2>
+              <p data-i18n="uploadDescription">上传一段会议音频，创建待转写会议。</p>
             </div>
-            <button class="panel-toggle" type="button" data-toggle-panel="upload" aria-expanded="true">收起</button>
+            <button class="panel-toggle" type="button" data-toggle-panel="upload" aria-expanded="true" data-i18n="collapse">收起</button>
           </div>
 
           <div class="panel-body">
@@ -38,31 +44,31 @@
 
             <div class="form-grid">
               <label>
-                <span>会议标题</span>
-                <input id="meetingTitle" type="text" placeholder="例如：7月课题组周会">
+                <span data-i18n="meetingTitleLabel">会议标题</span>
+                <input id="meetingTitle" type="text" placeholder="例如：7月课题组周会" data-i18n-placeholder="meetingTitlePlaceholder">
               </label>
               <label>
-                <span>音频文件</span>
+                <span data-i18n="audioFileLabel">音频文件</span>
                 <input id="audioFile" type="file" accept="audio/*">
               </label>
             </div>
             <label class="path-field" id="localPathField">
-              <span>本机音频路径（大文件推荐）</span>
+              <span data-i18n="localPathLabel">本机音频路径（大文件推荐）</span>
               <input id="localAudioPath" type="text" placeholder="/Users/starina/Downloads/Eval_Ali/Eval_Ali_far/audio_dir/R8003_M8001_MS801.wav">
             </label>
             <div class="vocabulary-field">
               <div>
-                <span>本次会议热词</span>
+                <span data-i18n="hotwordsLabel">本次会议热词</span>
                 <button class="info-button" type="button" aria-label="热词说明" title="热词会提示转写模型优先识别这些专业词、人名、缩写或设备名。只对本次会议生效，清空后不会带入新会议。">i</button>
               </div>
-              <button class="button" id="openVocabularyButton" type="button">添加本次会议热词</button>
+              <button class="button" id="openVocabularyButton" type="button" data-i18n="addHotwords">添加本次会议热词</button>
               <span class="vocabulary-count" id="vocabularyCount">0 个热词</span>
             </div>
-            <p class="hint" id="localPathHint">超过 100MB 的音频建议填本机路径创建会议，避免浏览器上传卡住。</p>
+            <p class="hint" id="localPathHint" data-i18n="localPathHint">超过 100MB 的音频建议填本机路径创建会议，避免浏览器上传卡住。</p>
 
             <div class="button-row">
-              <button class="button primary" id="createMeetingButton" type="button">创建会议</button>
-              <button class="button ghost" id="refreshButton" type="button">刷新列表</button>
+              <button class="button primary" id="createMeetingButton" type="button" data-i18n="createMeeting">创建会议</button>
+              <button class="button ghost" id="refreshButton" type="button" data-i18n="refreshList">刷新列表</button>
             </div>
           </div>
         </section>
@@ -71,17 +77,17 @@
           <div class="section-heading">
             <span class="step-index">2</span>
             <div>
-              <h2>转写与说话人标注</h2>
-              <p>FunASR 输出 speaker 编号后，在这里绑定真实姓名并校正文案。</p>
+              <h2 data-i18n="transcriptTitle">转写与说话人标注</h2>
+              <p data-i18n="transcriptDescription">FunASR 输出 speaker 编号后，在这里绑定真实姓名并校正文案。</p>
             </div>
-            <button class="panel-toggle" type="button" data-toggle-panel="transcript" aria-expanded="true">收起</button>
+            <button class="panel-toggle" type="button" data-toggle-panel="transcript" aria-expanded="true" data-i18n="collapse">收起</button>
           </div>
 
           <div class="panel-body">
             <div class="meeting-bar">
               <select id="meetingSelect" aria-label="选择会议"></select>
-              <button class="button" id="transcribeButton" type="button">开始转写</button>
-              <button class="button" id="saveSegmentsButton" type="button">保存标注</button>
+              <button class="button" id="transcribeButton" type="button" data-i18n="startTranscription">开始转写</button>
+              <button class="button" id="saveSegmentsButton" type="button" data-i18n="saveLabels">保存标注</button>
             </div>
 
             <div class="progress-card" id="transcriptionProgress" hidden>
@@ -103,36 +109,36 @@
           <div class="section-heading">
             <span class="step-index">3</span>
             <div>
-              <h2>生成会议总结</h2>
-              <p>选择内容类型后生成核心结论、智能章节、明确待办、决策和金句。</p>
+              <h2 data-i18n="summaryTitle">生成会议总结</h2>
+              <p data-i18n="summaryDescription">选择内容类型后生成核心结论、智能章节、明确待办、决策和金句。</p>
             </div>
-            <button class="panel-toggle" type="button" data-toggle-panel="summary" aria-expanded="true">收起</button>
+            <button class="panel-toggle" type="button" data-toggle-panel="summary" aria-expanded="true" data-i18n="collapse">收起</button>
           </div>
           <div class="panel-body">
             <div class="summary-settings">
               <label>
-                <span>总结模板</span>
+                <span data-i18n="summaryTemplateLabel">总结模板</span>
                 <select id="summaryTemplate">
-                  <option value="auto">自动识别</option>
-                  <option value="teaching">课程 / 作业讲解</option>
-                  <option value="research">科研组会</option>
-                  <option value="project">项目会议</option>
-                  <option value="general">通用讨论</option>
-                  <option value="custom">自定义要求</option>
+                  <option value="auto" data-i18n="templateAuto">自动识别</option>
+                  <option value="teaching" data-i18n="templateTeaching">课程 / 作业讲解</option>
+                  <option value="research" data-i18n="templateResearch">科研组会</option>
+                  <option value="project" data-i18n="templateProject">项目会议</option>
+                  <option value="general" data-i18n="templateGeneral">通用讨论</option>
+                  <option value="custom" data-i18n="templateCustom">自定义要求</option>
                 </select>
               </label>
               <label id="customPromptField" hidden>
-                <span>本次总结要求</span>
-                <textarea id="customSummaryPrompt" rows="3" maxlength="3000" placeholder="例如：重点整理实验参数、失败原因和下周需要验证的假设"></textarea>
+                <span data-i18n="customPromptLabel">本次总结要求</span>
+                <textarea id="customSummaryPrompt" rows="3" maxlength="3000" placeholder="例如：重点整理实验参数、失败原因和下周需要验证的假设" data-i18n-placeholder="customPromptPlaceholder"></textarea>
               </label>
             </div>
             <div class="button-row">
-              <button class="button primary" id="summarizeButton" type="button">生成总结</button>
-              <button class="button" id="exportDocButton" type="button">导出 Word</button>
-              <button class="button" id="exportPdfButton" type="button">导出 PDF</button>
-              <button class="button" id="editSummaryButton" type="button" hidden>编辑纪要</button>
-              <button class="button primary" id="saveSummaryButton" type="button" hidden>保存修改</button>
-              <button class="button ghost" id="cancelSummaryButton" type="button" hidden>取消编辑</button>
+              <button class="button primary" id="summarizeButton" type="button" data-i18n="generateSummary">生成总结</button>
+              <button class="button" id="exportDocButton" type="button" data-i18n="exportWord">导出 Word</button>
+              <button class="button" id="exportPdfButton" type="button" data-i18n="exportPdf">导出 PDF</button>
+              <button class="button" id="editSummaryButton" type="button" hidden data-i18n="editMinutes">编辑纪要</button>
+              <button class="button primary" id="saveSummaryButton" type="button" hidden data-i18n="saveChanges">保存修改</button>
+              <button class="button ghost" id="cancelSummaryButton" type="button" hidden data-i18n="cancelEdit">取消编辑</button>
             </div>
             <div class="summary" id="summary"></div>
           </div>
@@ -141,11 +147,35 @@
 
       <aside class="sidebar">
         <div class="panel compact">
-          <h2>会议队列</h2>
+          <h2 data-i18n="meetingQueue">会议队列</h2>
+          <div class="meeting-filters">
+            <label>
+              <span data-i18n="searchTitle">标题搜索</span>
+              <input id="meetingSearch" type="search" placeholder="输入会议标题" data-i18n-placeholder="searchTitlePlaceholder">
+            </label>
+            <label>
+              <span data-i18n="speakerFilter">说话人</span>
+              <select id="meetingSpeakerFilter"></select>
+            </label>
+            <div class="date-filter-grid">
+              <label>
+                <span data-i18n="dateFrom">开始日期</span>
+                <input id="meetingDateFrom" type="date">
+              </label>
+              <label>
+                <span data-i18n="dateTo">结束日期</span>
+                <input id="meetingDateTo" type="date">
+              </label>
+            </div>
+            <div class="filter-actions">
+              <span id="meetingFilterCount"></span>
+              <button class="link-button compact-link" id="clearMeetingFilters" type="button" data-i18n="clearFilters">清除筛选</button>
+            </div>
+          </div>
           <div class="meeting-list" id="meetingList"></div>
         </div>
         <div class="panel compact">
-          <h2>运行状态</h2>
+          <h2 data-i18n="runtimeStatus">运行状态</h2>
           <div class="log" id="log"></div>
         </div>
       </aside>
@@ -154,7 +184,7 @@
     <template id="segmentTemplate">
       <article class="segment-row">
         <div class="time"></div>
-        <input class="speaker-input" type="text" placeholder="姓名">
+        <input class="speaker-input" type="text" placeholder="姓名" data-i18n-placeholder="namePlaceholder">
         <textarea class="text-input" rows="2"></textarea>
       </article>
     </template>
@@ -162,23 +192,23 @@
     <dialog class="vocabulary-dialog" id="vocabularyDialog">
       <div class="dialog-head">
         <div>
-          <h2>本次会议热词</h2>
+          <h2 data-i18n="hotwordsLabel">本次会议热词</h2>
           <p id="vocabularyDialogCount">0/200 · 仅用于当前会议</p>
         </div>
         <button class="icon-close" id="closeVocabularyButton" type="button" aria-label="关闭">×</button>
       </div>
       <div class="vocabulary-table">
         <div class="vocabulary-table-head">
-          <span>Vocabulary</span>
-          <span>Type</span>
+          <span data-i18n="vocabularyColumn">词汇</span>
+          <span data-i18n="typeColumn">类型</span>
           <span></span>
         </div>
         <div class="vocabularyRows" id="vocabularyRows"></div>
       </div>
-      <button class="link-button" id="addVocabularyRowButton" type="button">+ Add</button>
+      <button class="link-button" id="addVocabularyRowButton" type="button" data-i18n="addVocabularyRow">+ 添加</button>
       <div class="dialog-actions">
-        <button class="button ghost" id="clearVocabularyButton" type="button">清空</button>
-        <button class="button primary" id="saveVocabularyButton" type="button">保存热词</button>
+        <button class="button ghost" id="clearVocabularyButton" type="button" data-i18n="clear">清空</button>
+        <button class="button primary" id="saveVocabularyButton" type="button" data-i18n="saveHotwords">保存热词</button>
       </div>
     </dialog>
 
