@@ -19,6 +19,10 @@
   box-sizing: border-box;
 }
 
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -69,7 +73,9 @@ textarea {
 
 .language-switch {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  flex: 0 0 116px;
+  grid-template-columns: 58px 58px;
+  width: 116px;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -77,7 +83,8 @@ textarea {
 }
 
 .language-switch button {
-  min-width: 48px;
+  width: 58px;
+  min-width: 58px;
   min-height: 38px;
   border: 0;
   background: transparent;
@@ -244,6 +251,59 @@ audio {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
+}
+
+.form-field {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+}
+
+.file-picker {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  padding: 6px;
+  cursor: pointer;
+}
+
+.file-picker:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+}
+
+.file-picker-button {
+  flex: 0 0 auto;
+  border-radius: 6px;
+  background: var(--surface-soft);
+  color: var(--ink);
+  padding: 7px 10px;
+}
+
+.file-picker-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .path-field {

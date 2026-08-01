@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>FunASR 会议总结助手</title>
+    <title>AI 会议纪要助手</title>
     <link rel="stylesheet" href="/styles.css">
   </head>
   <body>
@@ -11,8 +11,8 @@
       <section class="workspace">
         <header class="topbar">
           <div>
-            <p class="eyebrow">FunASR Meeting Assistant</p>
-            <h1 data-i18n="appTitle">组会录音到结构化纪要</h1>
+            <p class="eyebrow">GroupMeeting AI</p>
+            <h1 data-i18n="appTitle">AI 会议纪要助手</h1>
           </div>
           <div class="topbar-actions">
             <div class="language-switch" role="group" aria-label="Language">
@@ -35,7 +35,7 @@
 
           <div class="panel-body">
             <div class="recording-strip">
-              <button class="icon-button primary" id="recordButton" type="button" aria-label="开始录音" title="开始录音">
+              <button class="icon-button primary" id="recordButton" type="button" aria-label="开始录音" title="开始录音" data-i18n-aria-label="startRecording" data-i18n-title="startRecording">
                 <span id="recordIcon">●</span>
               </button>
               <div class="timer" id="recordTimer">00:00</div>
@@ -47,19 +47,23 @@
                 <span data-i18n="meetingTitleLabel">会议标题</span>
                 <input id="meetingTitle" type="text" placeholder="例如：7月课题组周会" data-i18n-placeholder="meetingTitlePlaceholder">
               </label>
-              <label>
+              <div class="form-field">
                 <span data-i18n="audioFileLabel">音频文件</span>
-                <input id="audioFile" type="file" accept="audio/*">
-              </label>
+                <input class="visually-hidden" id="audioFile" type="file" accept="audio/*">
+                <label class="file-picker" for="audioFile">
+                  <span class="file-picker-button" data-i18n="chooseAudio">选择音频</span>
+                  <span class="file-picker-name" id="audioFileName" data-i18n="noFileSelected">未选择文件</span>
+                </label>
+              </div>
             </div>
             <label class="path-field" id="localPathField">
               <span data-i18n="localPathLabel">本机音频路径（大文件推荐）</span>
-              <input id="localAudioPath" type="text" placeholder="/Users/starina/Downloads/Eval_Ali/Eval_Ali_far/audio_dir/R8003_M8001_MS801.wav">
+              <input id="localAudioPath" type="text" placeholder="/Users/&lt;username&gt;/Downloads/meeting-audio.wav" data-i18n-placeholder="localPathPlaceholder">
             </label>
             <div class="vocabulary-field">
               <div>
                 <span data-i18n="hotwordsLabel">本次会议热词</span>
-                <button class="info-button" type="button" aria-label="热词说明" title="热词会提示转写模型优先识别这些专业词、人名、缩写或设备名。只对本次会议生效，清空后不会带入新会议。">i</button>
+                <button class="info-button" type="button" aria-label="热词说明" title="热词会提示转写模型优先识别这些专业词、人名、缩写或设备名。只对本次会议生效，清空后不会带入新会议。" data-i18n-aria-label="hotwordsHelpLabel" data-i18n-title="hotwordsHelp">i</button>
               </div>
               <button class="button" id="openVocabularyButton" type="button" data-i18n="addHotwords">添加本次会议热词</button>
               <span class="vocabulary-count" id="vocabularyCount">0 个热词</span>
@@ -85,7 +89,7 @@
 
           <div class="panel-body">
             <div class="meeting-bar">
-              <select id="meetingSelect" aria-label="选择会议"></select>
+              <select id="meetingSelect" aria-label="选择会议" data-i18n-aria-label="selectMeeting"></select>
               <button class="button" id="transcribeButton" type="button" data-i18n="startTranscription">开始转写</button>
               <button class="button" id="saveSegmentsButton" type="button" data-i18n="saveLabels">保存标注</button>
             </div>
@@ -195,7 +199,7 @@
           <h2 data-i18n="hotwordsLabel">本次会议热词</h2>
           <p id="vocabularyDialogCount">0/200 · 仅用于当前会议</p>
         </div>
-        <button class="icon-close" id="closeVocabularyButton" type="button" aria-label="关闭">×</button>
+        <button class="icon-close" id="closeVocabularyButton" type="button" aria-label="关闭" data-i18n-aria-label="close">×</button>
       </div>
       <div class="vocabulary-table">
         <div class="vocabulary-table-head">

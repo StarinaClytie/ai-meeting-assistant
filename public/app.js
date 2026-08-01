@@ -24,7 +24,7 @@ const SPEAKER_ROLES = ["advisor", "student", "member"];
 
 const translations = {
   "zh-CN": {
-    appTitle: "组会录音到结构化纪要",
+    appTitle: "AI 会议纪要助手",
     localFlow: "本地流程",
     uploadTitle: "录音或上传",
     uploadDescription: "上传一段会议音频，创建待转写会议。",
@@ -33,8 +33,16 @@ const translations = {
     meetingTitleLabel: "会议标题",
     meetingTitlePlaceholder: "例如：7月课题组周会",
     audioFileLabel: "音频文件",
+    chooseAudio: "选择音频",
+    noFileSelected: "未选择文件",
     localPathLabel: "本机音频路径（大文件推荐）",
+    localPathPlaceholder: "/Users/<username>/Downloads/meeting-audio.wav",
     hotwordsLabel: "本次会议热词",
+    hotwordsHelpLabel: "热词说明",
+    hotwordsHelp: "热词会提示转写模型优先识别这些专业词、人名、缩写或设备名。只对本次会议生效，清空后不会带入新会议。",
+    startRecording: "开始录音",
+    selectMeeting: "选择会议",
+    close: "关闭",
     addHotwords: "添加本次会议热词",
     addVocabularyRow: "+ 添加",
     clear: "清空",
@@ -126,7 +134,7 @@ const translations = {
     namePlaceholder: "姓名"
   },
   en: {
-    appTitle: "Meeting audio to structured minutes",
+    appTitle: "AI Meeting Notes",
     localFlow: "Local workflow",
     uploadTitle: "Record or upload",
     uploadDescription: "Upload meeting audio to create a transcription task.",
@@ -135,8 +143,16 @@ const translations = {
     meetingTitleLabel: "Meeting title",
     meetingTitlePlaceholder: "e.g. July research group meeting",
     audioFileLabel: "Audio file",
+    chooseAudio: "Choose audio",
+    noFileSelected: "No file selected",
     localPathLabel: "Local audio path (large files)",
+    localPathPlaceholder: "/Users/<username>/Downloads/meeting-audio.wav",
     hotwordsLabel: "Meeting vocabulary",
+    hotwordsHelpLabel: "About meeting vocabulary",
+    hotwordsHelp: "Vocabulary helps the transcription model recognize technical terms, names, acronyms and equipment names. It applies only to this meeting and is not carried into a new meeting after being cleared.",
+    startRecording: "Start recording",
+    selectMeeting: "Select meeting",
+    close: "Close",
     addHotwords: "Add meeting vocabulary",
     addVocabularyRow: "+ Add",
     clear: "Clear",
@@ -236,6 +252,7 @@ const els = {
   audioPreview: document.querySelector("#audioPreview"),
   meetingTitle: document.querySelector("#meetingTitle"),
   audioFile: document.querySelector("#audioFile"),
+  audioFileName: document.querySelector("#audioFileName"),
   localAudioPath: document.querySelector("#localAudioPath"),
   localPathField: document.querySelector("#localPathField"),
   localPathHint: document.querySelector("#localPathHint"),
@@ -333,13 +350,20 @@ function t(key, variables = {}) {
 
 function applyLocale() {
   document.documentElement.lang = state.locale;
-  document.title = state.locale === "en" ? "FunASR Meeting Assistant" : "FunASR 会议总结助手";
+  document.title = state.locale === "en" ? "AI Meeting Notes" : "AI 会议纪要助手";
   document.querySelectorAll("[data-i18n]").forEach((node) => {
     node.textContent = t(node.dataset.i18n);
   });
   document.querySelectorAll("[data-i18n-placeholder]").forEach((node) => {
     node.placeholder = t(node.dataset.i18nPlaceholder);
   });
+  document.querySelectorAll("[data-i18n-title]").forEach((node) => {
+    node.title = t(node.dataset.i18nTitle);
+  });
+  document.querySelectorAll("[data-i18n-aria-label]").forEach((node) => {
+    node.setAttribute("aria-label", t(node.dataset.i18nAriaLabel));
+  });
+  els.audioFileName.textContent = els.audioFile.files[0]?.name || t("noFileSelected");
   els.languageButtons.forEach((button) => {
     button.setAttribute("aria-pressed", String(button.dataset.language === state.locale));
   });
@@ -438,6 +462,7 @@ async function createMeeting() {
 
 function handleFileSelected() {
   const file = els.audioFile.files[0];
+  els.audioFileName.textContent = file?.name || t("noFileSelected");
   if (!file) return;
   const size = formatBytes(file.size);
   if (file.size > 100 * 1024 * 1024) {
