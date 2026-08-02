@@ -472,9 +472,16 @@ async function createMeeting() {
         size: selectedFile.size
       };
     } else {
+      const recordingName = `recording-${Date.now()}.webm`;
+      const recordingFile = new File([state.recordedBlob], recordingName, {
+        type: state.recordedBlob.type || "audio/webm"
+      });
+      const uploaded = await uploadAudioFile(recordingFile);
       audio = {
-        name: selectedFile?.name || `recording-${Date.now()}.webm`,
-        dataUrl: await blobToDataUrl(audioBlob)
+        ossObjectName: uploaded.objectName,
+        name: recordingName,
+        mimeType: uploaded.contentType,
+        size: recordingFile.size
       };
     }
     const response = await api("/api/meetings", {
@@ -1613,15 +1620,6 @@ async function api(url, options = {}) {
     throw new Error(payload.error || payload.detail || t("requestFailed"));
   }
   return payload;
-}
-
-function blobToDataUrl(blob) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
 }
 
 function statusText(status) {
