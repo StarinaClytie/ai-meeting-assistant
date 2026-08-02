@@ -12,6 +12,7 @@
     "node": ">=20"
   },
   "dependencies": {
-    "ali-oss": "^6.23.0"
+    "ali-oss": "^6.23.0",
+    "docx": "^9.7.1"
   }
 }

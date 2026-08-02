@@ -3,7 +3,7 @@
 这是一个不使用 agent 的固定流程 MVP：
 
 1. 浏览器录音或上传音频
-2. 后端保存音频并临时上传到私有 OSS
+2. 浏览器使用后端签发的临时地址把音频直传到私有 OSS
 3. 阿里云 Fun-ASR 生成转录和说话人分离结果
 4. 用户手动绑定真实姓名并校正文案
 5. 后端调用配置好的大模型 API 生成结构化会议总结
@@ -34,8 +34,9 @@ OSS_ACCESS_KEY_ID="专用 RAM 用户的 AccessKey ID"
 OSS_ACCESS_KEY_SECRET="专用 RAM 用户的 AccessKey Secret"
 ```
 
-阿里云模式会将音频临时上传到私有 OSS、生成限时签名 URL、异步调用
-Fun-ASR，并在任务结束后尝试删除 OSS 中的临时音频。
+阿里云模式不会把大文件绕经网页服务器。后端只生成短时 PUT 签名，浏览器将
+音频直传私有 OSS；后端再生成限时 GET 签名调用 Fun-ASR，并在任务结束后
+尝试删除 OSS 中的临时音频。永久 AccessKey 只保存在服务器 `.env` 中。
 
 本机模型作为备用：
 
@@ -81,3 +82,6 @@ Ubuntu、systemd、Nginx 和 HTTPS 的配置模板位于 `deploy/`。生产环�
 Nginx 访问 `127.0.0.1:5173`，可使用 `/api/health` 检查服务状态。
 
 前端的“本机音频路径”仅适用于本机开发；生产网站应使用录音或文件上传。
+浏览器和云服务器都不能读取访问者电脑上的 `/Users/...` 或 Windows 本机路径。
+
+浏览器直传前必须为 OSS Bucket 配置 CORS，具体设置见 `deploy/README.md`。

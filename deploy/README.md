@@ -38,6 +38,19 @@ sudo systemctl status meeting-assistant
 curl http://127.0.0.1:5173/api/health
 ```
 
+## OSS 浏览器直传 CORS
+
+在 OSS Bucket 的“数据安全 / 跨域设置（CORS）”新增规则：
+
+- 来源：`https://groupmeeting.xyz`
+- 允许 Methods：`PUT`、`GET`、`HEAD`
+- 允许 Headers：`*`
+- 暴露 Headers：`ETag`
+- 缓存时间：`600`
+
+本机需要测试直传时，可再单独增加来源 `http://localhost:5173` 或实际使用的
+本机端口。不要使用 `*` 作为正式网站的来源。
+
 ## Nginx
 
 将 `deploy/nginx.conf` 中的 `YOUR_DOMAIN` 替换为正式域名：

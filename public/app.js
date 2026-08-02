@@ -57,6 +57,8 @@ const translations = {
     typeEntity: "机构设备",
     localPathHint: "本机调试时可直接填写音频文件的完整路径。",
     uploadingAudio: "正在上传音频 {percent}%",
+    preparingUpload: "正在准备 OSS 直传...",
+    directUploadFailed: "无法直传 OSS。请检查 Bucket 的 CORS 是否允许当前网站使用 PUT。",
     largeFileReady: "已选择 {name}（{size}），创建会议时将上传该大文件。",
     createMeeting: "创建会议",
     refreshList: "刷新列表",
@@ -76,8 +78,8 @@ const translations = {
     customPromptLabel: "本次总结要求",
     customPromptPlaceholder: "例如：重点整理实验参数、失败原因和下周需要验证的假设",
     generateSummary: "生成总结",
-    exportWord: "导出 Word",
-    exportPdf: "导出 PDF",
+    exportWord: "Word (.docx)",
+    exportPdf: "PDF",
     editMinutes: "编辑纪要",
     saveChanges: "保存修改",
     cancelEdit: "取消编辑",
@@ -88,6 +90,9 @@ const translations = {
     speakerFilter: "说话人",
     dateFrom: "开始日期",
     dateTo: "结束日期",
+    datePlaceholder: "YYYY-MM-DD",
+    invalidDate: "请使用 YYYY-MM-DD 格式",
+    export: "导出",
     clearFilters: "清除筛选",
     allSpeakers: "全部说话人",
     filterCount: "显示 {shown}/{total} 场",
@@ -169,6 +174,8 @@ const translations = {
     typeEntity: "Organization / equipment",
     localPathHint: "For local testing, enter the complete path to an audio file on this computer.",
     uploadingAudio: "Uploading audio {percent}%",
+    preparingUpload: "Preparing direct OSS upload...",
+    directUploadFailed: "Direct OSS upload failed. Check that the bucket CORS allows PUT from this site.",
     largeFileReady: "Selected {name} ({size}). The large file will upload when the meeting is created.",
     createMeeting: "Create meeting",
     refreshList: "Refresh",
@@ -188,8 +195,8 @@ const translations = {
     customPromptLabel: "Summary instructions",
     customPromptPlaceholder: "e.g. Focus on experiment parameters, failure causes and hypotheses to test next week",
     generateSummary: "Generate summary",
-    exportWord: "Export Word",
-    exportPdf: "Export PDF",
+    exportWord: "Word (.docx)",
+    exportPdf: "PDF",
     editMinutes: "Edit minutes",
     saveChanges: "Save changes",
     cancelEdit: "Cancel",
@@ -200,6 +207,9 @@ const translations = {
     speakerFilter: "Speaker",
     dateFrom: "From",
     dateTo: "To",
+    datePlaceholder: "YYYY-MM-DD",
+    invalidDate: "Use YYYY-MM-DD format",
+    export: "Export",
     clearFilters: "Clear filters",
     allSpeakers: "All speakers",
     filterCount: "Showing {shown} of {total}",
@@ -280,6 +290,7 @@ const els = {
   customSummaryPrompt: document.querySelector("#customSummaryPrompt"),
   exportDocButton: document.querySelector("#exportDocButton"),
   exportPdfButton: document.querySelector("#exportPdfButton"),
+  exportMenu: document.querySelector("#exportMenu"),
   editSummaryButton: document.querySelector("#editSummaryButton"),
   saveSummaryButton: document.querySelector("#saveSummaryButton"),
   cancelSummaryButton: document.querySelector("#cancelSummaryButton"),
@@ -318,15 +329,21 @@ els.transcribeButton.addEventListener("click", transcribeSelected);
 els.saveSegmentsButton.addEventListener("click", saveSegments);
 els.summarizeButton.addEventListener("click", summarizeSelected);
 els.summaryTemplate.addEventListener("change", updateCustomPromptVisibility);
-els.exportDocButton.addEventListener("click", exportSummaryDoc);
-els.exportPdfButton.addEventListener("click", exportSummaryPdf);
+els.exportDocButton.addEventListener("click", () => {
+  els.exportMenu.open = false;
+  exportSummaryDoc();
+});
+els.exportPdfButton.addEventListener("click", () => {
+  els.exportMenu.open = false;
+  exportSummaryPdf();
+});
 els.editSummaryButton.addEventListener("click", startSummaryEditing);
 els.saveSummaryButton.addEventListener("click", saveSummaryEditing);
 els.cancelSummaryButton.addEventListener("click", cancelSummaryEditing);
 els.meetingSearch.addEventListener("input", updateMeetingFilters);
 els.meetingSpeakerFilter.addEventListener("change", updateMeetingFilters);
-els.meetingDateFrom.addEventListener("change", updateMeetingFilters);
-els.meetingDateTo.addEventListener("change", updateMeetingFilters);
+els.meetingDateFrom.addEventListener("input", updateMeetingFilters);
+els.meetingDateTo.addEventListener("input", updateMeetingFilters);
 els.clearMeetingFilters.addEventListener("click", clearMeetingFilters);
 els.languageButtons.forEach((button) => {
   button.addEventListener("click", () => setLocale(button.dataset.language));
@@ -440,9 +457,10 @@ async function createMeeting() {
     } else if (selectedFile) {
       const uploaded = await uploadAudioFile(selectedFile);
       audio = {
-        uploadToken: uploaded.token,
+        ossObjectName: uploaded.objectName,
         name: selectedFile.name,
-        mimeType: selectedFile.type || uploaded.mime_type
+        mimeType: uploaded.contentType,
+        size: selectedFile.size
       };
     } else {
       audio = {
@@ -483,31 +501,35 @@ function handleFileSelected() {
   }
 }
 
-function uploadAudioFile(file) {
+async function uploadAudioFile(file) {
+  els.systemStatus.textContent = t("preparingUpload");
+  const response = await api("/api/uploads/presign", {
+    method: "POST",
+    body: JSON.stringify({
+      name: file.name,
+      mimeType: file.type || "application/octet-stream",
+      size: file.size
+    })
+  });
+  const target = response.upload;
+
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
-    request.open("POST", `/api/uploads?name=${encodeURIComponent(file.name)}`);
-    request.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+    request.open("PUT", target.uploadUrl);
+    request.setRequestHeader("Content-Type", target.contentType);
     request.upload.addEventListener("progress", (event) => {
       if (!event.lengthComputable) return;
       const percent = Math.min(100, Math.round((event.loaded / event.total) * 100));
       els.systemStatus.textContent = t("uploadingAudio", { percent });
     });
     request.addEventListener("load", () => {
-      let response;
-      try {
-        response = JSON.parse(request.responseText || "{}");
-      } catch {
-        reject(new Error(t("requestFailed")));
-        return;
-      }
       if (request.status < 200 || request.status >= 300) {
-        reject(new Error(response.error || t("requestFailed")));
+        reject(new Error(`${t("directUploadFailed")} (HTTP ${request.status || 0})`));
         return;
       }
-      resolve(response.upload);
+      resolve(target);
     });
-    request.addEventListener("error", () => reject(new Error(t("requestFailed"))));
+    request.addEventListener("error", () => reject(new Error(t("directUploadFailed"))));
     request.send(file);
   });
 }
@@ -704,17 +726,23 @@ function updateVocabularyDialogCount() {
   els.vocabularyDialogCount.textContent = t("vocabularyDialogCount", { count });
 }
 
-function exportSummaryDoc() {
+async function exportSummaryDoc() {
   const meeting = selectedMeeting();
   if (!meeting?.summary) {
     log("请先生成会议总结，再导出 Word。");
     return;
   }
-
-  const html = buildSummaryDocumentHtml(meeting, "word");
-  const blob = new Blob(["\ufeff", html], { type: "application/msword;charset=utf-8" });
-  downloadBlob(blob, `${safeFileName(meeting.title)}-会议纪要.doc`);
-  log("已导出 Word 会议纪要。");
+  try {
+    const response = await fetch(`/api/meetings/${encodeURIComponent(meeting.id)}/export-docx`);
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.error || t("requestFailed"));
+    }
+    downloadBlob(await response.blob(), `${safeFileName(meeting.title)}-会议纪要.docx`);
+    log("已导出 DOCX 会议纪要。");
+  } catch (error) {
+    log(error.message);
+  }
 }
 
 function exportSummaryPdf() {
@@ -823,13 +851,33 @@ function renderMeetings() {
 }
 
 function updateMeetingFilters() {
+  const from = validDateFilterValue(els.meetingDateFrom);
+  const to = validDateFilterValue(els.meetingDateTo);
   state.meetingFilters = {
     title: els.meetingSearch.value.trim(),
     speaker: els.meetingSpeakerFilter.value,
-    from: els.meetingDateFrom.value,
-    to: els.meetingDateTo.value
+    from,
+    to
   };
   renderMeetings();
+}
+
+function validDateFilterValue(input) {
+  const value = input.value.trim();
+  if (!value) {
+    input.setCustomValidity("");
+    input.removeAttribute("aria-invalid");
+    return "";
+  }
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const date = match ? new Date(`${value}T00:00:00`) : null;
+  const isValid = Boolean(date && !Number.isNaN(date.getTime())
+    && date.getFullYear() === Number(match[1])
+    && date.getMonth() + 1 === Number(match[2])
+    && date.getDate() === Number(match[3]));
+  input.setCustomValidity(isValid ? "" : t("invalidDate"));
+  input.toggleAttribute("aria-invalid", !isValid);
+  return isValid ? value : "";
 }
 
 function clearMeetingFilters() {
@@ -1064,8 +1112,7 @@ function renderSummaryEditControls(meeting) {
   els.saveSummaryButton.hidden = !isEditing;
   els.cancelSummaryButton.hidden = !isEditing;
   els.summarizeButton.hidden = isEditing;
-  els.exportDocButton.hidden = isEditing;
-  els.exportPdfButton.hidden = isEditing;
+  els.exportMenu.hidden = isEditing;
 }
 
 function isSummaryEditing() {

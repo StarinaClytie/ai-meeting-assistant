@@ -7,6 +7,7 @@ const DEFAULT_TIMEOUT_MS = 2 * 60 * 60 * 1000;
 
 export async function transcribeWithAliyun({
   audioPath,
+  ossObjectName,
   originalName,
   meetingId,
   speakerCount,
@@ -14,15 +15,14 @@ export async function transcribeWithAliyun({
 }) {
   const config = readAliyunConfig();
   const client = createOssClient(config);
-  const extension = path.extname(originalName || audioPath).toLowerCase() || ".audio";
-  const objectName = [
-    String(config.objectPrefix || "meeting-audio").replace(/^\/+|\/+$/g, ""),
-    new Date().toISOString().slice(0, 10),
-    `${meetingId || crypto.randomUUID()}${extension}`
-  ].filter(Boolean).join("/");
+  const objectName = ossObjectName || buildObjectName(config, originalName || audioPath, meetingId);
 
-  await report(onProgress, 10, "正在上传音频到阿里云 OSS");
-  await client.put(objectName, audioPath);
+  if (ossObjectName) {
+    await report(onProgress, 18, "音频已上传到阿里云 OSS");
+  } else {
+    await report(onProgress, 10, "正在上传音频到阿里云 OSS");
+    await client.put(objectName, audioPath);
+  }
 
   try {
     const signedUrl = client.signatureUrl(objectName, {
@@ -47,6 +47,41 @@ export async function transcribeWithAliyun({
       console.warn(`OSS 临时音频清理失败 (${objectName}):`, error.message);
     });
   }
+}
+
+export function createAliyunDirectUpload({ originalName, mimeType, size }) {
+  const config = readAliyunConfig();
+  const client = createOssClient(config);
+  const objectName = buildObjectName(config, originalName);
+  const contentType = String(mimeType || "application/octet-stream").split(";")[0];
+  const expiresIn = Math.max(300, Number(process.env.OSS_UPLOAD_URL_EXPIRES_SECONDS || 1800));
+  const uploadUrl = client.signatureUrl(objectName, {
+    expires: expiresIn,
+    method: "PUT",
+    "Content-Type": contentType
+  });
+
+  return {
+    uploadUrl,
+    objectName,
+    contentType,
+    size: Number(size || 0),
+    expiresIn
+  };
+}
+
+function buildObjectName(config, originalName, identifier = crypto.randomUUID()) {
+  const extension = safeObjectExtension(originalName);
+  return [
+    String(config.objectPrefix || "meeting-audio").replace(/^\/+|\/+$/g, ""),
+    new Date().toISOString().slice(0, 10),
+    `${identifier || crypto.randomUUID()}${extension}`
+  ].filter(Boolean).join("/");
+}
+
+function safeObjectExtension(fileName) {
+  const extension = path.extname(String(fileName || "")).toLowerCase();
+  return /^\.[a-z0-9]{1,8}$/.test(extension) ? extension : ".audio";
 }
 
 function readAliyunConfig() {

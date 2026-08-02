@@ -4,7 +4,8 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import crypto from "node:crypto";
-import { transcribeWithAliyun } from "./aliyun-transcription.js";
+import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
+import { createAliyunDirectUpload, transcribeWithAliyun } from "./aliyun-transcription.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 await loadLocalEnv(path.join(__dirname, ".env"));
@@ -102,6 +103,24 @@ async function handleApi(req, res, url) {
     return;
   }
 
+  if (method === "POST" && url.pathname === "/api/uploads/presign") {
+    const body = await readJsonBody(req);
+    const size = Number(body.size || 0);
+    if (!body.name || !Number.isFinite(size) || size < 1) {
+      throw httpError(400, "音频文件名或大小无效");
+    }
+    if (size > maxUploadSizeBytes()) {
+      throw httpError(413, `音频超过 ${Number(process.env.MAX_UPLOAD_MB || 600)}MB 上传限制`);
+    }
+    const upload = createAliyunDirectUpload({
+      originalName: path.basename(String(body.name)),
+      mimeType: body.mimeType,
+      size
+    });
+    sendJson(res, 201, { upload });
+    return;
+  }
+
   const match = url.pathname.match(/^\/api\/meetings\/([^/]+)(?:\/([^/]+))?$/);
   if (!match) {
     sendJson(res, 404, { error: "接口不存在" });
@@ -113,6 +132,21 @@ async function handleApi(req, res, url) {
   if (method === "GET" && !action) {
     const meeting = await getMeeting(meetingId);
     sendJson(res, 200, { meeting });
+    return;
+  }
+
+  if (method === "GET" && action === "export-docx") {
+    const db = await readDb();
+    const meeting = findMeeting(db, meetingId);
+    if (!meeting.summary) throw httpError(400, "请先生成会议总结");
+    const buffer = await buildMeetingDocx(meeting);
+    const fileName = `${safeDownloadName(meeting.title)}-meeting-notes.docx`;
+    res.writeHead(200, {
+      "content-type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "content-disposition": `attachment; filename="meeting-notes.docx"; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+      "content-length": buffer.length
+    });
+    res.end(buffer);
     return;
   }
 
@@ -173,6 +207,20 @@ async function createMeeting(body) {
     audioPath = resolvedPath;
     audioSize = fileStat.size;
     sourceType = "local_path";
+  } else if (audio.ossObjectName && audio.name) {
+    const objectName = String(audio.ossObjectName);
+    const objectPrefix = String(process.env.OSS_OBJECT_PREFIX || "meeting-audio").replace(/^\/+|\/+$/g, "");
+    audioSize = Number(audio.size || 0);
+    if (!objectName.startsWith(`${objectPrefix}/`) || objectName.includes("..")) {
+      throw httpError(400, "OSS 音频对象标识无效");
+    }
+    if (!Number.isFinite(audioSize) || audioSize < 1 || audioSize > maxUploadSizeBytes()) {
+      throw httpError(400, "OSS 音频大小无效");
+    }
+    originalName = path.basename(String(audio.name));
+    mimeType = String(audio.mimeType || mimeFromExtension(safeAudioExtension(originalName, "")));
+    audioPath = "";
+    sourceType = "oss_direct";
   } else if (audio.uploadToken && audio.name) {
     const uploadToken = String(audio.uploadToken);
     const safeToken = path.basename(uploadToken);
@@ -218,6 +266,7 @@ async function createMeeting(body) {
       original_name: originalName,
       mime_type: mimeType,
       path: audioPath,
+      oss_object_name: sourceType === "oss_direct" ? String(audio.ossObjectName) : "",
       size: audioSize,
       source_type: sourceType
     },
@@ -239,7 +288,7 @@ async function saveUploadedAudio(req, url) {
   const extension = safeAudioExtension(originalName, mimeType);
   const uploadToken = `${crypto.randomUUID()}${extension}`;
   const uploadPath = path.join(UPLOAD_DIR, uploadToken);
-  const maxUploadBytes = Math.max(1, Number(process.env.MAX_UPLOAD_MB || 600)) * 1024 * 1024;
+  const maxUploadBytes = maxUploadSizeBytes();
   const declaredSize = Number(req.headers["content-length"] || 0);
 
   if (declaredSize > maxUploadBytes) {
@@ -276,6 +325,10 @@ async function saveUploadedAudio(req, url) {
   };
 }
 
+function maxUploadSizeBytes() {
+  return Math.max(1, Number(process.env.MAX_UPLOAD_MB || 600)) * 1024 * 1024;
+}
+
 async function startTranscription(meetingId) {
   if (transcriptionJobs.has(meetingId)) {
     return getMeeting(meetingId);
@@ -309,7 +362,7 @@ async function transcribeMeeting(meetingId) {
   const meeting = findMeeting(db, meetingId);
 
   try {
-    const segments = await runFunAsr(meeting.audio.path, meetingId, meeting.hotwords || []);
+    const segments = await runFunAsr(meeting.audio, meetingId, meeting.hotwords || []);
     if (!segments.length) {
       throw new Error("FunASR 没有返回可用转录片段");
     }
@@ -439,12 +492,13 @@ async function callSummaryModel(segments, hotwords = [], options = {}) {
   throw new Error(`不支持的摘要模型提供方：${provider}`);
 }
 
-async function runFunAsr(audioPath, meetingId, hotwords = []) {
+async function runFunAsr(audio, meetingId, hotwords = []) {
   const provider = String(process.env.TRANSCRIPTION_PROVIDER || "local").trim().toLowerCase();
   if (provider === "aliyun" || provider === "dashscope") {
     return transcribeWithAliyun({
-      audioPath,
-      originalName: path.basename(audioPath),
+      audioPath: audio.path,
+      ossObjectName: audio.oss_object_name,
+      originalName: audio.original_name || path.basename(audio.path || "meeting-audio.audio"),
       meetingId,
       speakerCount: process.env.DASHSCOPE_SPEAKER_COUNT,
       onProgress: (progress) => updateMeetingProgress(meetingId, progress)
@@ -454,9 +508,13 @@ async function runFunAsr(audioPath, meetingId, hotwords = []) {
     throw new Error(`不支持的转写提供方：${provider}`);
   }
 
+  if (!audio.path) {
+    throw new Error("本机 FunASR 无法读取 OSS 直传音频，请将 TRANSCRIPTION_PROVIDER 设置为 aliyun");
+  }
+
   const normalizedHotwords = normalizeHotwords(hotwords);
   try {
-    return await runFunAsrOnce(audioPath, meetingId, normalizedHotwords);
+    return await runFunAsrOnce(audio.path, meetingId, normalizedHotwords);
   } catch (error) {
     if (!normalizedHotwords.length) throw error;
     await updateMeetingProgress(meetingId, {
@@ -464,7 +522,7 @@ async function runFunAsr(audioPath, meetingId, hotwords = []) {
       stage: "热词转写失败，正在不带热词重试"
     });
     try {
-      return await runFunAsrOnce(audioPath, meetingId, []);
+      return await runFunAsrOnce(audio.path, meetingId, []);
     } catch {
       throw error;
     }
@@ -1138,6 +1196,86 @@ function publicMeeting(meeting) {
       source_type: meeting.audio.source_type
     }
   };
+}
+
+async function buildMeetingDocx(meeting) {
+  const summary = meeting.summary || {};
+  const children = [
+    docxHeading(meeting.title || "Meeting notes", HeadingLevel.TITLE),
+    docxParagraph(summary.summary || "暂无会议概览")
+  ];
+
+  if (Array.isArray(summary.core_takeaways)) {
+    children.push(docxHeading("核心结论"));
+    for (const item of summary.core_takeaways) {
+      children.push(docxBullet(`${item.title || "结论"}：${item.detail || ""}`));
+    }
+  } else if (Array.isArray(summary.key_points)) {
+    children.push(docxHeading("关键要点"));
+    summary.key_points.forEach((item) => children.push(docxBullet(item)));
+  }
+
+  if (Array.isArray(summary.chapters) && summary.chapters.length) {
+    children.push(docxHeading("智能章节"));
+    for (const chapter of summary.chapters) {
+      children.push(docxHeading(`${chapter.start_time || ""} ${chapter.title || "未命名章节"}`, HeadingLevel.HEADING_2));
+      children.push(docxParagraph(chapter.summary || ""));
+      (chapter.key_points || []).forEach((item) => children.push(docxBullet(item)));
+    }
+  }
+
+  children.push(docxHeading("待办事项"));
+  if (Array.isArray(summary.action_items) && summary.action_items.length) {
+    summary.action_items.forEach((item) => {
+      const deadline = item.deadline ? `（${item.deadline}）` : "";
+      children.push(docxBullet(`${item.person || "未指定"}：${item.task || ""}${deadline}`));
+    });
+  } else {
+    children.push(docxParagraph("本次没有明确的后续待办"));
+  }
+
+  children.push(docxHeading("关键决策"));
+  if (Array.isArray(summary.decisions) && summary.decisions.length) {
+    summary.decisions.forEach((item) => children.push(docxBullet(typeof item === "string" ? item : item.decision || "")));
+  } else {
+    children.push(docxParagraph("本次没有明确达成的会议决策"));
+  }
+
+  if (Array.isArray(summary.highlights) && summary.highlights.length) {
+    children.push(docxHeading("金句时刻"));
+    summary.highlights.forEach((item) => {
+      children.push(docxParagraph(`“${item.quote || ""}” — ${item.speaker || "未标注"}`));
+    });
+  }
+
+  const document = new Document({ sections: [{ children }] });
+  return Packer.toBuffer(document);
+}
+
+function docxHeading(text, heading = HeadingLevel.HEADING_1) {
+  return new Paragraph({
+    heading,
+    children: [new TextRun({ text: String(text || ""), bold: true, font: "Microsoft YaHei" })]
+  });
+}
+
+function docxParagraph(text) {
+  return new Paragraph({
+    spacing: { after: 160 },
+    children: [new TextRun({ text: String(text || ""), font: "Microsoft YaHei", size: 22 })]
+  });
+}
+
+function docxBullet(text) {
+  return new Paragraph({
+    bullet: { level: 0 },
+    spacing: { after: 100 },
+    children: [new TextRun({ text: String(text || ""), font: "Microsoft YaHei", size: 22 })]
+  });
+}
+
+function safeDownloadName(value) {
+  return String(value || "meeting").replace(/[\\/:*?"<>|]/g, "-").slice(0, 80) || "meeting";
 }
 
 async function normalizeStaleTranscriptions(db) {

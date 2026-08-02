@@ -138,11 +138,16 @@
             </div>
             <div class="button-row">
               <button class="button primary" id="summarizeButton" type="button" data-i18n="generateSummary">生成总结</button>
-              <button class="button" id="exportDocButton" type="button" data-i18n="exportWord">导出 Word</button>
-              <button class="button" id="exportPdfButton" type="button" data-i18n="exportPdf">导出 PDF</button>
               <button class="button" id="editSummaryButton" type="button" hidden data-i18n="editMinutes">编辑纪要</button>
               <button class="button primary" id="saveSummaryButton" type="button" hidden data-i18n="saveChanges">保存修改</button>
               <button class="button ghost" id="cancelSummaryButton" type="button" hidden data-i18n="cancelEdit">取消编辑</button>
+              <details class="export-menu" id="exportMenu">
+                <summary class="button"><span data-i18n="export">导出</span><span class="menu-chevron" aria-hidden="true"></span></summary>
+                <div class="export-menu-options">
+                  <button id="exportDocButton" type="button" data-i18n="exportWord">Word (.docx)</button>
+                  <button id="exportPdfButton" type="button" data-i18n="exportPdf">PDF</button>
+                </div>
+              </details>
             </div>
             <div class="summary" id="summary"></div>
           </div>
@@ -164,11 +169,11 @@
             <div class="date-filter-grid">
               <label>
                 <span data-i18n="dateFrom">开始日期</span>
-                <input id="meetingDateFrom" type="date">
+                <input id="meetingDateFrom" type="text" inputmode="numeric" maxlength="10" placeholder="YYYY-MM-DD" data-i18n-placeholder="datePlaceholder">
               </label>
               <label>
                 <span data-i18n="dateTo">结束日期</span>
-                <input id="meetingDateTo" type="date">
+                <input id="meetingDateTo" type="text" inputmode="numeric" maxlength="10" placeholder="YYYY-MM-DD" data-i18n-placeholder="datePlaceholder">
               </label>
             </div>
             <div class="filter-actions">
