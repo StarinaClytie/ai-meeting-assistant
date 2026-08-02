@@ -169,11 +169,23 @@
             <div class="date-filter-grid">
               <label>
                 <span data-i18n="dateFrom">开始日期</span>
-                <input id="meetingDateFrom" type="text" inputmode="numeric" maxlength="10" placeholder="YYYY-MM-DD" data-i18n-placeholder="datePlaceholder">
+                <div class="date-input-shell">
+                  <input id="meetingDateFrom" type="text" inputmode="numeric" maxlength="10" placeholder="YYYY-MM-DD" data-i18n-placeholder="datePlaceholder">
+                  <button class="date-picker-button" type="button" data-date-picker="meetingDateFromPicker" aria-label="选择开始日期" data-i18n-aria-label="chooseDate">
+                    <span class="calendar-icon" aria-hidden="true"></span>
+                  </button>
+                  <input class="native-date-picker" id="meetingDateFromPicker" type="date" tabindex="-1" aria-hidden="true">
+                </div>
               </label>
               <label>
                 <span data-i18n="dateTo">结束日期</span>
-                <input id="meetingDateTo" type="text" inputmode="numeric" maxlength="10" placeholder="YYYY-MM-DD" data-i18n-placeholder="datePlaceholder">
+                <div class="date-input-shell">
+                  <input id="meetingDateTo" type="text" inputmode="numeric" maxlength="10" placeholder="YYYY-MM-DD" data-i18n-placeholder="datePlaceholder">
+                  <button class="date-picker-button" type="button" data-date-picker="meetingDateToPicker" aria-label="选择结束日期" data-i18n-aria-label="chooseDate">
+                    <span class="calendar-icon" aria-hidden="true"></span>
+                  </button>
+                  <input class="native-date-picker" id="meetingDateToPicker" type="date" tabindex="-1" aria-hidden="true">
+                </div>
               </label>
             </div>
             <div class="filter-actions">

@@ -936,6 +936,63 @@ input[aria-invalid="true"] {
   font-variant-numeric: tabular-nums;
 }
 
+.date-input-shell {
+  position: relative;
+}
+
+.date-input-shell > input[type="text"] {
+  padding-right: 42px;
+}
+
+.date-picker-button {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  right: 4px;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.date-picker-button:hover,
+.date-picker-button:focus-visible {
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  outline: none;
+}
+
+.calendar-icon {
+  position: relative;
+  width: 15px;
+  height: 14px;
+  border: 2px solid currentColor;
+  border-radius: 3px;
+}
+
+.calendar-icon::before {
+  position: absolute;
+  top: 2px;
+  right: -2px;
+  left: -2px;
+  border-top: 2px solid currentColor;
+  content: "";
+}
+
+.native-date-picker {
+  position: absolute;
+  width: 1px !important;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .filter-actions {
   display: flex;
   align-items: center;

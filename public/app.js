@@ -92,6 +92,7 @@ const translations = {
     dateTo: "结束日期",
     datePlaceholder: "YYYY-MM-DD",
     invalidDate: "请使用 YYYY-MM-DD 格式",
+    chooseDate: "打开日期选择器",
     export: "导出",
     clearFilters: "清除筛选",
     allSpeakers: "全部说话人",
@@ -209,6 +210,7 @@ const translations = {
     dateTo: "To",
     datePlaceholder: "YYYY-MM-DD",
     invalidDate: "Use YYYY-MM-DD format",
+    chooseDate: "Open date picker",
     export: "Export",
     clearFilters: "Clear filters",
     allSpeakers: "All speakers",
@@ -305,6 +307,7 @@ const els = {
   meetingSpeakerFilter: document.querySelector("#meetingSpeakerFilter"),
   meetingDateFrom: document.querySelector("#meetingDateFrom"),
   meetingDateTo: document.querySelector("#meetingDateTo"),
+  datePickerButtons: document.querySelectorAll("[data-date-picker]"),
   meetingFilterCount: document.querySelector("#meetingFilterCount"),
   clearMeetingFilters: document.querySelector("#clearMeetingFilters"),
   meetingList: document.querySelector("#meetingList"),
@@ -344,6 +347,12 @@ els.meetingSearch.addEventListener("input", updateMeetingFilters);
 els.meetingSpeakerFilter.addEventListener("change", updateMeetingFilters);
 els.meetingDateFrom.addEventListener("input", updateMeetingFilters);
 els.meetingDateTo.addEventListener("input", updateMeetingFilters);
+els.datePickerButtons.forEach((button) => {
+  button.addEventListener("click", () => openDatePicker(button));
+});
+document.querySelectorAll(".native-date-picker").forEach((picker) => {
+  picker.addEventListener("change", () => applyPickedDate(picker));
+});
 els.clearMeetingFilters.addEventListener("click", clearMeetingFilters);
 els.languageButtons.forEach((button) => {
   button.addEventListener("click", () => setLocale(button.dataset.language));
@@ -880,11 +889,29 @@ function validDateFilterValue(input) {
   return isValid ? value : "";
 }
 
+function openDatePicker(button) {
+  const picker = document.querySelector(`#${cssEscape(button.dataset.datePicker)}`);
+  if (!picker) return;
+  const textInput = picker.id === "meetingDateFromPicker" ? els.meetingDateFrom : els.meetingDateTo;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(textInput.value)) picker.value = textInput.value;
+  if (typeof picker.showPicker === "function") picker.showPicker();
+  else picker.click();
+}
+
+function applyPickedDate(picker) {
+  const textInput = picker.id === "meetingDateFromPicker" ? els.meetingDateFrom : els.meetingDateTo;
+  textInput.value = picker.value;
+  updateMeetingFilters();
+}
+
 function clearMeetingFilters() {
   state.meetingFilters = { title: "", speaker: "", from: "", to: "" };
   els.meetingSearch.value = "";
   els.meetingDateFrom.value = "";
   els.meetingDateTo.value = "";
+  document.querySelectorAll(".native-date-picker").forEach((picker) => {
+    picker.value = "";
+  });
   els.meetingSpeakerFilter.value = "";
   renderMeetings();
 }
