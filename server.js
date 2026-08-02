@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { mkdir, readFile, stat, unlink, writeFile } from "node:fs/promises";
+import { mkdir, open, readFile, stat, unlink, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -96,6 +96,12 @@ async function handleApi(req, res, url) {
     return;
   }
 
+  if (method === "POST" && url.pathname === "/api/uploads") {
+    const upload = await saveUploadedAudio(req, url);
+    sendJson(res, 201, { upload });
+    return;
+  }
+
   const match = url.pathname.match(/^\/api\/meetings\/([^/]+)(?:\/([^/]+))?$/);
   if (!match) {
     sendJson(res, 404, { error: "接口不存在" });
@@ -167,6 +173,23 @@ async function createMeeting(body) {
     audioPath = resolvedPath;
     audioSize = fileStat.size;
     sourceType = "local_path";
+  } else if (audio.uploadToken && audio.name) {
+    const uploadToken = String(audio.uploadToken);
+    const safeToken = path.basename(uploadToken);
+    if (safeToken !== uploadToken || !/^[a-f0-9-]{36}\.(webm|wav|mp3|m4a|ogg|aac|flac)$/i.test(safeToken)) {
+      throw httpError(400, "上传的音频标识无效");
+    }
+    const uploadedPath = path.join(UPLOAD_DIR, safeToken);
+    const fileStat = await stat(uploadedPath).catch(() => null);
+    if (!fileStat?.isFile() || fileStat.size < 1) {
+      throw httpError(400, "上传的音频不存在或为空");
+    }
+    const extension = safeAudioExtension(audio.name, audio.mimeType);
+    originalName = path.basename(String(audio.name));
+    mimeType = String(audio.mimeType || mimeFromExtension(extension));
+    audioPath = uploadedPath;
+    audioSize = fileStat.size;
+    sourceType = "uploaded";
   } else if (audio.dataUrl && audio.name) {
     const parsed = parseDataUrl(audio.dataUrl);
     if (!parsed.buffer.length) {
@@ -208,6 +231,49 @@ async function createMeeting(body) {
   db.meetings.unshift(meeting);
   await writeDb(db);
   return publicMeeting(meeting);
+}
+
+async function saveUploadedAudio(req, url) {
+  const originalName = path.basename(String(url.searchParams.get("name") || "meeting-audio.webm"));
+  const mimeType = String(req.headers["content-type"] || "application/octet-stream").split(";")[0];
+  const extension = safeAudioExtension(originalName, mimeType);
+  const uploadToken = `${crypto.randomUUID()}${extension}`;
+  const uploadPath = path.join(UPLOAD_DIR, uploadToken);
+  const maxUploadBytes = Math.max(1, Number(process.env.MAX_UPLOAD_MB || 600)) * 1024 * 1024;
+  const declaredSize = Number(req.headers["content-length"] || 0);
+
+  if (declaredSize > maxUploadBytes) {
+    throw httpError(413, `音频超过 ${Math.round(maxUploadBytes / 1024 / 1024)}MB 上传限制`);
+  }
+
+  const file = await open(uploadPath, "wx");
+  let size = 0;
+  try {
+    for await (const chunk of req) {
+      size += chunk.length;
+      if (size > maxUploadBytes) {
+        throw httpError(413, `音频超过 ${Math.round(maxUploadBytes / 1024 / 1024)}MB 上传限制`);
+      }
+      await file.write(chunk);
+    }
+  } catch (error) {
+    await file.close().catch(() => {});
+    await unlink(uploadPath).catch(() => {});
+    throw error;
+  }
+  await file.close();
+
+  if (!size) {
+    await unlink(uploadPath).catch(() => {});
+    throw httpError(400, "音频文件为空");
+  }
+
+  return {
+    token: uploadToken,
+    original_name: originalName,
+    mime_type: mimeType,
+    size
+  };
 }
 
 async function startTranscription(meetingId) {

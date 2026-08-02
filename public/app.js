@@ -55,7 +55,9 @@ const translations = {
     typeName: "人名",
     typeAcronym: "缩写",
     typeEntity: "机构设备",
-    localPathHint: "超过 100MB 的音频建议填本机路径创建会议，避免浏览器上传卡住。",
+    localPathHint: "本机调试时可直接填写音频文件的完整路径。",
+    uploadingAudio: "正在上传音频 {percent}%",
+    largeFileReady: "已选择 {name}（{size}），创建会议时将上传该大文件。",
     createMeeting: "创建会议",
     refreshList: "刷新列表",
     transcriptTitle: "转写与说话人标注",
@@ -165,7 +167,9 @@ const translations = {
     typeName: "Name",
     typeAcronym: "Acronym",
     typeEntity: "Organization / equipment",
-    localPathHint: "For audio over 100 MB, use a local path to avoid a stalled browser upload.",
+    localPathHint: "For local testing, enter the complete path to an audio file on this computer.",
+    uploadingAudio: "Uploading audio {percent}%",
+    largeFileReady: "Selected {name} ({size}). The large file will upload when the meeting is created.",
     createMeeting: "Create meeting",
     refreshList: "Refresh",
     transcriptTitle: "Transcript and speaker labels",
@@ -427,19 +431,25 @@ async function createMeeting() {
     log("请先录音、选择音频文件，或填写本机音频路径。");
     return;
   }
-  if (selectedFile && selectedFile.size > 100 * 1024 * 1024) {
-    log("这个文件超过 100MB，请把它的完整本机路径填到下方输入框，再创建会议。");
-    return;
-  }
 
   setBusy(true);
   try {
-    const audio = localPath
-      ? { localPath }
-      : {
+    let audio;
+    if (localPath) {
+      audio = { localPath };
+    } else if (selectedFile) {
+      const uploaded = await uploadAudioFile(selectedFile);
+      audio = {
+        uploadToken: uploaded.token,
+        name: selectedFile.name,
+        mimeType: selectedFile.type || uploaded.mime_type
+      };
+    } else {
+      audio = {
         name: selectedFile?.name || `recording-${Date.now()}.webm`,
         dataUrl: await blobToDataUrl(audioBlob)
       };
+    }
     const response = await api("/api/meetings", {
       method: "POST",
       body: JSON.stringify({
@@ -457,6 +467,7 @@ async function createMeeting() {
     log(error.message);
   } finally {
     setBusy(false);
+    renderAll();
   }
 }
 
@@ -466,10 +477,39 @@ function handleFileSelected() {
   if (!file) return;
   const size = formatBytes(file.size);
   if (file.size > 100 * 1024 * 1024) {
-    log(`已选择 ${file.name}（${size}）。文件较大，请改用本机路径方式创建会议。`);
+    log(t("largeFileReady", { name: file.name, size }));
   } else {
     log(`已选择 ${file.name}（${size}）。`);
   }
+}
+
+function uploadAudioFile(file) {
+  return new Promise((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    request.open("POST", `/api/uploads?name=${encodeURIComponent(file.name)}`);
+    request.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+    request.upload.addEventListener("progress", (event) => {
+      if (!event.lengthComputable) return;
+      const percent = Math.min(100, Math.round((event.loaded / event.total) * 100));
+      els.systemStatus.textContent = t("uploadingAudio", { percent });
+    });
+    request.addEventListener("load", () => {
+      let response;
+      try {
+        response = JSON.parse(request.responseText || "{}");
+      } catch {
+        reject(new Error(t("requestFailed")));
+        return;
+      }
+      if (request.status < 200 || request.status >= 300) {
+        reject(new Error(response.error || t("requestFailed")));
+        return;
+      }
+      resolve(response.upload);
+    });
+    request.addEventListener("error", () => reject(new Error(t("requestFailed"))));
+    request.send(file);
+  });
 }
 
 async function loadMeetings() {
